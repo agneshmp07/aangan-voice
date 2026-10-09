@@ -1,0 +1,351 @@
+{
+ "synthetic": true,
+ "generated_by": "scripts/seed_demo.py",
+ "metrics": {
+  "period": {
+   "start": "2026-09-01T00:00:00+05:30",
+   "end": "2026-09-30T23:59:59+05:30",
+   "days": 30.0
+  },
+  "synthetic": true,
+  "volume": {
+   "calls": 194,
+   "answered": 186,
+   "missed": 8,
+   "unique_callers": 174,
+   "minutes": 794.5,
+   "avg_call_min": 4.1
+  },
+  "after_hours": {
+   "calls": 72,
+   "share_pct": 37.1,
+   "office_hours": "10:00–19:00",
+   "qualified_after_hours": 30
+  },
+  "by_hour": [
+   1,
+   1,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   4,
+   10,
+   18,
+   23,
+   9,
+   11,
+   18,
+   10,
+   21,
+   27,
+   6,
+   9,
+   12,
+   9,
+   2,
+   3
+  ],
+  "qualified_by_hour": [
+   0,
+   1,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   1,
+   2,
+   5,
+   8,
+   6,
+   7,
+   7,
+   2,
+   11,
+   14,
+   3,
+   0,
+   6,
+   5,
+   1,
+   2
+  ],
+  "by_weekday": [
+   27,
+   32,
+   34,
+   26,
+   23,
+   27,
+   25
+  ],
+  "by_day": {
+   "2026-09-01": 7,
+   "2026-09-02": 7,
+   "2026-09-03": 7,
+   "2026-09-04": 6,
+   "2026-09-05": 6,
+   "2026-09-06": 6,
+   "2026-09-07": 8,
+   "2026-09-08": 6,
+   "2026-09-09": 5,
+   "2026-09-10": 6,
+   "2026-09-11": 6,
+   "2026-09-12": 8,
+   "2026-09-13": 5,
+   "2026-09-14": 6,
+   "2026-09-15": 5,
+   "2026-09-16": 8,
+   "2026-09-17": 6,
+   "2026-09-18": 5,
+   "2026-09-19": 7,
+   "2026-09-20": 8,
+   "2026-09-21": 7,
+   "2026-09-22": 7,
+   "2026-09-23": 7,
+   "2026-09-24": 7,
+   "2026-09-25": 6,
+   "2026-09-26": 6,
+   "2026-09-27": 6,
+   "2026-09-28": 6,
+   "2026-09-29": 7,
+   "2026-09-30": 7
+  },
+  "funnel": {
+   "calls": 194,
+   "answered": 186,
+   "enquiries": 169,
+   "qualified": 81,
+   "booked": 0,
+   "handed_to_designer": 81,
+   "claimed": 77
+  },
+  "outcomes": {
+   "DECLINE": 43,
+   "ASK": 31,
+   "QUALIFIED": 81,
+   "NURTURE": 14,
+   "ESCALATE": 11
+  },
+  "decline_reasons": {
+   "timeline": 20,
+   "real_project": 18,
+   "service_area": 13,
+   "budget": 6
+  },
+  "escalations": 11,
+  "price_question": {
+   "asked": 41,
+   "booked": 0,
+   "booked_pct": 0.0,
+   "qualified": 20,
+   "claimed": 19,
+   "claimed_pct": 46.3,
+   "share_of_calls_pct": 21.1
+  },
+  "time_to_claim": {
+   "handoff_to_claim": {
+    "n": 77,
+    "median_min": 16.5,
+    "p90_min": 1080.9,
+    "within_60_min_pct": 70.1
+   },
+   "call_to_claim": {
+    "n": 77,
+    "median_min": 22.2,
+    "p90_min": 1089.6,
+    "within_60_min_pct": 70.1
+   },
+   "call_to_claim_office_hours": {
+    "n": 49,
+    "median_min": 15.1,
+    "p90_min": 27.7,
+    "within_60_min_pct": 100.0
+   },
+   "call_to_claim_after_hours": {
+    "n": 28,
+    "median_min": 841.1,
+    "p90_min": 1228.9,
+    "within_60_min_pct": 17.9
+   },
+   "unclaimed": 4
+  },
+  "callbacks": {
+   "cancelled": 11,
+   "dispatched": 99,
+   "pending": 1
+  },
+  "cost": {
+   "currency": "INR",
+   "complete": true,
+   "calls_with_known_cost": 194,
+   "rate_per_min": 4.5,
+   "variable": 3575.19,
+   "fixed_prorated": 4999.0,
+   "total": 8574.19,
+   "per_call": 44.2,
+   "per_qualified_lead": 105.85,
+   "per_booked_consultation": null,
+   "per_lead_handed_to_designer": 105.85,
+   "per_claimed_lead": 111.35,
+   "note": null
+  },
+  "reliability": {
+   "tool_calls": 0,
+   "failures": {},
+   "p95_latency_ms": null
+  }
+ },
+ "recent_leads": [
+  {
+   "id": 180,
+   "created_at": "2026-09-30T21:02:28+05:30",
+   "name": "Kunal",
+   "area": "Viman Nagar",
+   "outcome": "DECLINE",
+   "reasons": [
+    "budget"
+   ],
+   "booked": false,
+   "claimed_by": null,
+   "priority": false
+  },
+  {
+   "id": 179,
+   "created_at": "2026-09-30T16:27:08+05:30",
+   "name": "Vikram",
+   "area": "Kharadi",
+   "outcome": "DECLINE",
+   "reasons": [
+    "real_project"
+   ],
+   "booked": false,
+   "claimed_by": null,
+   "priority": false
+  },
+  {
+   "id": 178,
+   "created_at": "2026-09-30T14:35:14+05:30",
+   "name": "Smita",
+   "area": "Kothrud",
+   "outcome": "QUALIFIED",
+   "reasons": [],
+   "booked": false,
+   "claimed_by": "Isha",
+   "priority": true
+  },
+  {
+   "id": 177,
+   "created_at": "2026-09-30T14:16:46+05:30",
+   "name": "Vikram",
+   "area": "Pimple Saudagar",
+   "outcome": "NURTURE",
+   "reasons": [
+    "timeline"
+   ],
+   "booked": false,
+   "claimed_by": null,
+   "priority": false
+  },
+  {
+   "id": 176,
+   "created_at": "2026-09-30T13:10:50+05:30",
+   "name": "Vikram",
+   "area": "Aundh",
+   "outcome": "ASK",
+   "reasons": [],
+   "booked": false,
+   "claimed_by": null,
+   "priority": false
+  },
+  {
+   "id": 175,
+   "created_at": "2026-09-30T10:24:50+05:30",
+   "name": "Ritu",
+   "area": "Baner",
+   "outcome": "QUALIFIED",
+   "reasons": [],
+   "booked": false,
+   "claimed_by": "Kabir",
+   "priority": false
+  },
+  {
+   "id": 174,
+   "created_at": "2026-09-30T10:14:56+05:30",
+   "name": "Laleh",
+   "area": "Pimple Saudagar",
+   "outcome": "ASK",
+   "reasons": [],
+   "booked": false,
+   "claimed_by": null,
+   "priority": false
+  },
+  {
+   "id": 173,
+   "created_at": "2026-09-29T19:10:45+05:30",
+   "name": "Tanvi",
+   "area": "Kharadi",
+   "outcome": "ASK",
+   "reasons": [],
+   "booked": false,
+   "claimed_by": null,
+   "priority": false
+  },
+  {
+   "id": 172,
+   "created_at": "2026-09-29T18:00:22+05:30",
+   "name": "Amit",
+   "area": "Aundh",
+   "outcome": "ASK",
+   "reasons": [],
+   "booked": false,
+   "claimed_by": null,
+   "priority": false
+  },
+  {
+   "id": 171,
+   "created_at": "2026-09-29T17:21:44+05:30",
+   "name": "Sunil",
+   "area": "Ravet",
+   "outcome": "DECLINE",
+   "reasons": [
+    "budget"
+   ],
+   "booked": false,
+   "claimed_by": null,
+   "priority": false
+  },
+  {
+   "id": 170,
+   "created_at": "2026-09-29T12:57:47+05:30",
+   "name": "Girish",
+   "area": "Hinjewadi",
+   "outcome": "QUALIFIED",
+   "reasons": [],
+   "booked": false,
+   "claimed_by": "Kabir",
+   "priority": false
+  },
+  {
+   "id": 169,
+   "created_at": "2026-09-29T12:57:55+05:30",
+   "name": "Sneha",
+   "area": "Hinjewadi",
+   "outcome": "QUALIFIED",
+   "reasons": [],
+   "booked": false,
+   "claimed_by": "Rohan",
+   "priority": false
+  }
+ ],
+ "assumptions": {
+  "calls": 194,
+  "rate_per_min_inr": 4.5,
+  "monthly_fixed_inr": 4999,
+  "note": "September 2026, generated. Volumes from the brief (~200 calls, ~1/3 after hours); outcome mix modelled on the September transcripts; ₹4.5/min and ₹4,999/month from VaniAgent's public pricing (2026-10-10); hosting on free tiers."
+ }
+}

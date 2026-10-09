@@ -164,7 +164,7 @@ def main():
     recent = metrics_router.list_leads(limit=12)
     out = {"synthetic": True, "generated_by": "scripts/seed_demo.py", "metrics": m, "recent_leads": recent,
            "assumptions": {"calls": n_calls, "rate_per_min_inr": 4.5, "monthly_fixed_inr": 4999,
-                           "note": "Synthetic month. Volumes from the brief (~200 calls, ~1/3 after hours); "
+                           "note": "September 2026, generated. Volumes from the brief (~200 calls, ~1/3 after hours); "
                                    "outcome mix modelled on the September transcripts; ₹4.5/min and ₹4,999/month from "
                                    "VaniAgent's public pricing (2026-10-10); hosting on free tiers."}}
     dest = ROOT / "dashboard" / "demo-data.json"

@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aangan Voice Desk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 44'%3E%3Crect width='44' height='44' rx='11' fill='%23b24a22'/%3E%3Crect x='14' y='14' width='16' height='16' rx='3' fill='%23faf6ef'/%3E%3C/svg%3E">
+</head>
+<body>
+<div class="wrap">
+  <header class="mast">
+    <div class="brand">
+      <svg class="brand-mark" viewBox="0 0 44 44" aria-hidden="true">
+        <rect width="44" height="44" rx="11" fill="var(--accent)"/>
+        <rect x="14" y="14" width="16" height="16" rx="3" fill="var(--surface-1)"/>
+        <circle cx="22" cy="22" r="3" fill="var(--s4)"/>
+      </svg>
+      <div>
+        <h1>Aangan voice desk</h1>
+        <p>Every call answered, every lead handed over, and what it costs</p>
+      </div>
+    </div>
+    <div class="controls">
+      <div class="seg" role="group" aria-label="Period">
+        <button type="button" data-range="7" aria-pressed="false">7 days</button>
+        <button type="button" data-range="30" aria-pressed="true">30 days</button>
+        <button type="button" data-range="month" aria-pressed="false">This month</button>
+      </div>
+      <a class="icon-btn" href="demo.html" style="text-decoration:none">See demo month</a>
+      <button class="icon-btn" type="button" data-theme-toggle aria-label="Switch light or dark theme">◐ Theme</button>
+    </div>
+  </header>
+  <main id="app"><p class="sub">Loading…</p></main>
+</div>
+<script>window.AANGAN = { range: "30" };</script>
+<script src="app.js"></script>
+</body>
+</html>
