@@ -8,7 +8,7 @@ import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
-from fastapi.responses import RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import db
@@ -56,7 +56,18 @@ if _dash.exists():
 
 @app.get("/")
 def root():
-    return RedirectResponse("/dashboard/")
+    if _dash.exists():
+        return RedirectResponse("/dashboard/")
+    h = health()
+    db_line = "Postgres (persistent)" if h["persistent"] and h["database"] == "postgres" else h["database"]
+    return HTMLResponse(
+        "<!doctype html><meta name=viewport content='width=device-width'><title>Aangan Voice</title>"
+        "<body style='font:16px system-ui;max-width:640px;margin:40px auto;padding:0 16px'>"
+        "<h1>Aangan Voice Receptionist</h1><p>Backend is running.</p>"
+        f"<ul><li>Database: {db_line}</li><li>Mode: {'mock (no real messages)' if h['mock_mode'] else 'live'}</li>"
+        f"{'<li><b>Warning:</b> ' + h['warning'] + '</li>' if h['warning'] else ''}</ul>"
+        "<p>Dashboard: coming in the next step. API: <a href='/docs'>/docs</a> · <a href='/health'>/health</a> · "
+        "<a href='/api/metrics'>/api/metrics</a></p></body>")
 
 
 @app.get("/health")
