@@ -1,0 +1,4 @@
+-r requirements.txt
+pytest>=8.0
+# TEST_POSTGRES=1 pytest  → runs the API tests on a throwaway local Postgres
+pgserver>=0.1

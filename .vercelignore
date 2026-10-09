@@ -1,0 +1,7 @@
+data/
+tests/
+seed/
+*.db
+.env
+.pytest_cache/
+__pycache__/

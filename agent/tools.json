@@ -1,0 +1,138 @@
+{
+  "_readme": "Five HTTP tools for the voice agent. Replace {BASE_URL} with PUBLIC_BASE_URL and {TOOL_SECRET} with the value in .env. Schemas are JSON Schema in the common OpenAI function-calling shape, so they paste into most platforms. Every tool returns JSON with a `say` field: the agent must speak it word for word. Every tool answers in under 4 seconds, even when something fails. If your platform can inject the call id and caller number as variables, map them to call_id and caller_phone; if not, leave them out and the backend links calls by phone number.",
+  "server": {
+    "base_url": "{BASE_URL}",
+    "method": "POST",
+    "headers": {"X-Aangan-Secret": "{TOOL_SECRET}", "Content-Type": "application/json"},
+    "timeout_seconds": 4
+  },
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "evaluate_enquiry",
+        "description": "Send every fact the caller has said so far about their project. Returns the studio's decision (outcome: ASK, QUALIFIED, NURTURE, DECLINE, ESCALATE) and `say`, the exact sentence to speak next. Call again whenever the caller adds or corrects a fact. Never decide fit yourself.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "call_id": {"type": "string", "description": "Platform call id, if available."},
+            "caller_phone": {"type": "string", "description": "Caller's number, if available."},
+            "language": {"type": "string", "enum": ["en", "hi"], "description": "Language the caller is speaking."},
+            "facts": {
+              "type": "object",
+              "description": "Only what the caller actually said. Leave out anything unknown.",
+              "properties": {
+                "caller_name": {"type": "string"},
+                "project_category": {"type": "string", "description": "residential, office, clinic, studio, or what they said (restaurant, gym, shop…)"},
+                "scope": {"type": "string", "enum": ["full_home", "partial", "single_room", "office_fitout"]},
+                "rooms_in_scope": {"type": "integer"},
+                "wants_execution": {"type": "boolean"},
+                "advice_only": {"type": "boolean"},
+                "service_only": {"type": "string", "enum": ["furniture_sourcing", "vastu", "structural", "architecture", "decor"]},
+                "structural_changes": {"type": "boolean"},
+                "locality": {"type": "string", "description": "Area/locality exactly as said"},
+                "city": {"type": "string"},
+                "caller_confirms_pune_pcmc": {"type": "boolean", "description": "Only after the tool asked whether the place is in Pune/PCMC"},
+                "bhk": {"type": "integer"},
+                "carpet_area_sqft": {"type": "integer"},
+                "deadline_text": {"type": "string", "description": "When it must be complete, in the caller's words"},
+                "deadline_date": {"type": "string", "description": "Exact completion date if given, YYYY-MM-DD"},
+                "deadline_flexible": {"type": "boolean", "description": "Only after the tool asked whether the date is fixed"},
+                "start_text": {"type": "string", "description": "When they want to start, in their words"},
+                "site_status": {"type": "string"},
+                "budget_max_inr": {"type": "integer", "description": "ONLY if the caller volunteered a budget. Top of their range in rupees. Never ask."},
+                "is_decision_maker": {"type": "boolean"},
+                "authorised_by_decision_maker": {"type": "boolean"},
+                "decision_maker_will_attend": {"type": "boolean"},
+                "research_only": {"type": "boolean"},
+                "existing_client": {"type": "boolean"},
+                "complaint": {"type": "boolean"},
+                "referred_by": {"type": "string"},
+                "asked_price": {"type": "boolean"},
+                "extra_notes": {"type": "string"}
+              },
+              "additionalProperties": true
+            }
+          },
+          "required": ["facts"]
+        }
+      },
+      "endpoint": "/tools/evaluate_enquiry"
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "get_consultation_slots",
+        "description": "Only after evaluate_enquiry returned QUALIFIED. Returns up to three free consultation slots (slot_id + spoken label) and `say` offering them.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "call_id": {"type": "string"},
+            "caller_phone": {"type": "string"},
+            "language": {"type": "string", "enum": ["en", "hi"]}
+          }
+        }
+      },
+      "endpoint": "/tools/get_consultation_slots"
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "book_consultation",
+        "description": "Book the slot the caller chose. Pass the slot_id exactly as returned by get_consultation_slots. The backend refuses any caller the rules have not qualified.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "call_id": {"type": "string"},
+            "caller_phone": {"type": "string"},
+            "language": {"type": "string", "enum": ["en", "hi"]},
+            "slot_id": {"type": "string", "description": "ISO datetime from get_consultation_slots"}
+          },
+          "required": ["slot_id"]
+        }
+      },
+      "endpoint": "/tools/book_consultation"
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "escalate_existing_client",
+        "description": "Existing Aangan client with a problem or complaint about an ongoing project. Alerts the studio head immediately and queues a priority callback.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "call_id": {"type": "string"},
+            "caller_phone": {"type": "string"},
+            "language": {"type": "string", "enum": ["en", "hi"]},
+            "caller_name": {"type": "string"},
+            "issue": {"type": "string", "description": "One or two lines in the caller's words"},
+            "designer_name": {"type": "string"},
+            "project_location": {"type": "string"},
+            "complaint": {"type": "boolean", "description": "false if it's a routine question, not a complaint"}
+          },
+          "required": ["issue"]
+        }
+      },
+      "endpoint": "/tools/escalate_existing_client"
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "request_human_callback",
+        "description": "Caller wants a person, prefers Marathi, needs a slot we can't offer, said yes to a designer call after NURTURE, or anything you can't handle. Queues a callback (never between 9pm and 9am).",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "call_id": {"type": "string"},
+            "caller_phone": {"type": "string"},
+            "language": {"type": "string", "enum": ["en", "hi"]},
+            "reason": {"type": "string", "description": "e.g. wants_human, marathi_preferred, nurture_timeline, slot_preference:<what>"},
+            "urgent": {"type": "boolean"}
+          },
+          "required": ["reason"]
+        }
+      },
+      "endpoint": "/tools/request_human_callback"
+    }
+  ]
+}
