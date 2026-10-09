@@ -79,16 +79,21 @@ def compute(start: str | None = None, end: str | None = None) -> dict:
                       for r in db.unj(l["reasons"], []))
     price_askers = [l for l in leads if l["asked_price"]]
     price_booked = [l for l in price_askers if l["booking_id"]]
+    price_qualified = [l for l in price_askers if l["outcome"] == "QUALIFIED"]
+    price_claimed = [l for l in price_qualified if l["claimed_at"]]
 
     # -------- designer time to claim
     ttc, call_to_claim = [], []
+    ctc_office, ctc_after = [], []
     for l in claimed:
         sent, got = clock.parse(l["handoff_sent_at"]), clock.parse(l["claimed_at"])
         if sent and got:
             ttc.append((got - sent).total_seconds() / 60)
         st = clock.parse(l["call_started"] or l["created_at"])
         if st and got:
-            call_to_claim.append((got - st).total_seconds() / 60)
+            mins = (got - st).total_seconds() / 60
+            call_to_claim.append(mins)
+            (ctc_after if clock.is_after_hours(st) else ctc_office).append(mins)
 
     def dist(xs):
         if not xs:
@@ -134,8 +139,12 @@ def compute(start: str | None = None, end: str | None = None) -> dict:
         "decline_reasons": dict(reasons.most_common()),
         "escalations": outcomes.get("ESCALATE", 0),
         "price_question": {"asked": len(price_askers), "booked": len(price_booked),
-                           "booked_pct": _pct(len(price_booked), len(price_askers))},
+                           "booked_pct": _pct(len(price_booked), len(price_askers)),
+                           "qualified": len(price_qualified), "claimed": len(price_claimed),
+                           "claimed_pct": _pct(len(price_claimed), len(price_askers)),
+                           "share_of_calls_pct": _pct(len(price_askers), len(calls))},
         "time_to_claim": {"handoff_to_claim": dist(ttc), "call_to_claim": dist(call_to_claim),
+                          "call_to_claim_office_hours": dist(ctc_office), "call_to_claim_after_hours": dist(ctc_after),
                           "unclaimed": len(handed) - len([l for l in handed if l["claimed_at"]])},
         "callbacks": dict(Counter(cb["status"] for cb in callbacks)),
         "cost": {"currency": "INR", "complete": complete, "calls_with_known_cost": len(known),
@@ -144,6 +153,7 @@ def compute(start: str | None = None, end: str | None = None) -> dict:
                  "variable": variable, "fixed_prorated": fixed, "total": total,
                  "per_call": unit(len(calls)), "per_qualified_lead": unit(len(qualified)),
                  "per_booked_consultation": unit(len(booked)),
+                 "per_lead_handed_to_designer": unit(len(handed)), "per_claimed_lead": unit(len(claimed)),
                  "note": None if complete else "Set PLATFORM_COST_PER_MIN_INR (or send cost in the call-ended payload) to price every call."},
         "reliability": {"tool_calls": len(tool_events), "failures": dict(fails),
                         "p95_latency_ms": lat[int(0.95 * (len(lat) - 1))] if lat else None},

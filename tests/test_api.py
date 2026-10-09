@@ -557,3 +557,15 @@ def test_bad_database_does_not_crash_startup_and_hides_password(tmp_path, monkey
         assert "Sup3rSecretPw" not in str(h)
         r = c.post("/tools/evaluate_enquiry", json={"caller_phone": PHONE, "facts": {}})
         assert r.status_code == 200 and r.json()["say"] == FALLBACK  # caller still hears the safe line
+
+
+def test_capture_yes_no_strings_become_real_booleans(api):
+    capture(api, {"call_id": "vb1", "phone": "9800000301", "scope": "full_home", "locality": "Baner",
+                  "deadline_text": "by April", "asked_price": "no", "is_decision_maker": "no",
+                  "decision_maker_will_attend": "yes"})
+    lead = db.row("SELECT * FROM leads WHERE call_id='vb1'")
+    assert lead["asked_price"] == 0
+    facts = db.unj(lead["facts"])
+    assert facts["asked_price"] is False and facts["is_decision_maker"] is False
+    body = outbox("telegram")[0]["body"]
+    assert "Asked about price" not in body and "represented (owners attend)" in body

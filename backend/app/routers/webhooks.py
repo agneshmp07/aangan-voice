@@ -219,12 +219,12 @@ def _collect_facts(obj, out: dict, depth=0):
 
 
 def clean_facts(raw: dict) -> dict:
-    out = {}
-    for k, v in raw.items():
-        if v is None or str(v).strip().lower() in _UNKNOWN:
-            continue  # "unknown"/0/empty = not said; never let a blank become a "no"
-        out[k] = v
-    return out
+    """Drop 'unknown'/0/empty (= not said; never let a blank become a "no"), then coerce every
+    value to the engine's type: "no" must be False, not the truthy string "no"."""
+    from dataclasses import asdict
+    kept = {k: v for k, v in raw.items() if v is not None and str(v).strip().lower() not in _UNKNOWN}
+    typed = asdict(_Facts.from_dict(kept))
+    return {k: typed[k] for k in kept if k in typed and typed[k] is not None and k != "asked"} |            {k: v for k, v in kept.items() if k not in typed}
 
 
 def process_capture(body: dict) -> dict:
