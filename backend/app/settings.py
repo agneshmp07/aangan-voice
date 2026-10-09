@@ -11,16 +11,30 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 
 
+# A whole .env pasted into ONE hosting variable (Vercel's form sometimes saves it that way).
+ENV_BLOB_VARS = ("AANGAN_ENV_FILE", "vercel_env")
+
+
+def _apply_env_text(text: str):
+    for raw in text.splitlines():
+        line = raw.strip()
+        if line and not line.startswith("#") and "=" in line:
+            k, v = line.split("=", 1)
+            k = k.strip()
+            if k.replace("_", "").isalnum():
+                os.environ.setdefault(k, v.strip().strip('"').strip("'"))
+
+
 def _load_dotenv():
+    for name in ENV_BLOB_VARS:
+        blob = os.environ.get(name)
+        if blob and "=" in blob:
+            _apply_env_text(blob)
     if os.environ.get("AANGAN_NO_DOTENV") == "1":  # tests: never read real keys
         return
     p = ROOT / ".env"
     if p.exists():
-        for raw in p.read_text(encoding="utf8").splitlines():
-            line = raw.strip()
-            if line and not line.startswith("#") and "=" in line:
-                k, v = line.split("=", 1)
-                os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
+        _apply_env_text(p.read_text(encoding="utf8"))
 
 
 def _f(name, default=None):

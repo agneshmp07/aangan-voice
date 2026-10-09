@@ -534,3 +534,12 @@ def test_health_warns_when_serverless_without_postgres(api, monkeypatch):
     settings_mod.reload()
     h = api.get("/health").json()
     assert h["persistent"] is False and "DATABASE_URL" in h["warning"]
+
+
+def test_env_blob_in_single_variable_is_unpacked(api, monkeypatch):
+    for k in ("PLATFORM_COST_PER_MIN_INR", "MOCK_MODE"):  # make monkeypatch restore these afterwards
+        monkeypatch.setenv(k, "x")
+        monkeypatch.delenv(k)
+    monkeypatch.setenv("vercel_env", "# comment\nMOCK_MODE=1\nPLATFORM_COST_PER_MIN_INR=4.5\nbad line\n")
+    s = settings_mod.reload()
+    assert s.platform_cost_per_min == 4.5
