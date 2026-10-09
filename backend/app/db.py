@@ -58,6 +58,29 @@ def _path() -> str:
     return settings.db_path
 
 
+def safe_database_url(url: str) -> str:
+    """Percent-encode the password so '@', '#', '/', ':' in it can't break the URL.
+    Splits at the LAST '@' before the host, so it works on raw and already-encoded URLs."""
+    from urllib.parse import quote, unquote
+    scheme, sep, rest = url.partition("://")
+    if not sep or "@" not in rest:
+        return url
+    creds, _, host = rest.rpartition("@")
+    user, colon, pwd = creds.partition(":")
+    return f"{scheme}://{user}{colon}{quote(unquote(pwd), safe='')}@{host}" if colon else url
+
+
+def redact(text: str) -> str:
+    """Never let a password reach a log line or /health."""
+    url = settings.database_url or ""
+    _, _, rest = url.partition("://")
+    creds = rest.rpartition("@")[0]
+    pwd = creds.partition(":")[2]
+    for secret in {pwd, __import__("urllib.parse").parse.unquote(pwd)} - {""}:
+        text = text.replace(secret, "***")
+    return text
+
+
 def is_postgres() -> bool:
     return (settings.database_url or "").startswith(("postgres://", "postgresql://"))
 
@@ -105,7 +128,7 @@ class _Postgres:
         from psycopg.rows import dict_row
         c = getattr(_pg_local, "conn", None)
         if c is None or c.closed:
-            c = psycopg.connect(settings.database_url, autocommit=True, row_factory=dict_row,
+            c = psycopg.connect(safe_database_url(settings.database_url), autocommit=True, row_factory=dict_row,
                                 prepare_threshold=None, connect_timeout=5)
             _pg_local.conn = c
         self.c = c

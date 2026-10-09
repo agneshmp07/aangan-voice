@@ -18,6 +18,7 @@ from .settings import ROOT, settings
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger("aangan")
+DB_ERROR: str | None = None
 
 
 async def _scheduler():
@@ -34,7 +35,13 @@ async def _scheduler():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    db.init()
+    global DB_ERROR
+    try:
+        db.init()
+        DB_ERROR = None
+    except Exception as e:  # noqa: BLE001 — keep serving: tools still answer with the fallback line
+        DB_ERROR = db.redact(f"{type(e).__name__}: {e}")[:300]
+        log.error("database init failed: %s", DB_ERROR)
     # Serverless (Vercel) freezes between requests: no loop there; an external cron hits /cron/tick.
     run_loop = os.environ.get("RUN_SCHEDULER", "1") == "1" and not settings.serverless
     task = asyncio.create_task(_scheduler()) if run_loop else None
@@ -73,6 +80,9 @@ def root():
 @app.get("/health")
 def health():
     persistent = db.is_postgres() or not settings.serverless
+    if DB_ERROR:
+        return {"ok": False, "mock_mode": settings.mock_mode, "database": "postgres" if db.is_postgres() else "sqlite",
+                "persistent": persistent, "warning": "Database unreachable: " + DB_ERROR}
     return {"ok": True, "mock_mode": settings.mock_mode, "database": "postgres" if db.is_postgres() else "sqlite",
             "persistent": persistent,
             "warning": None if persistent else "DATABASE_URL not set: data is lost between requests on Vercel"}

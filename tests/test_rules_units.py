@@ -203,3 +203,14 @@ def test_price_guard_allows(ok):
 def test_say_refuses_to_format_a_price_into_a_line():
     out = say("booking.confirmed", "en", slot="Monday, cost 18 lakh")
     assert out == LINES["fallback.callback"]["en"]
+
+
+def test_database_url_password_with_special_characters():
+    from app.db import safe_database_url
+    raw = "postgresql://postgres.ref:p@ss#w/rd:x@aws-0-ap-south-1.pooler.supabase.com:6543/postgres"
+    safe = safe_database_url(raw)
+    assert safe == "postgresql://postgres.ref:p%40ss%23w%2Frd%3Ax@aws-0-ap-south-1.pooler.supabase.com:6543/postgres"
+    assert safe_database_url(safe) == safe  # idempotent on an already-encoded URL
+    import psycopg
+    info = psycopg.conninfo.conninfo_to_dict(safe)
+    assert info["host"] == "aws-0-ap-south-1.pooler.supabase.com" and info["password"] == "p@ss#w/rd:x"

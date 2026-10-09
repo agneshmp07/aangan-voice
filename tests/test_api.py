@@ -543,3 +543,17 @@ def test_env_blob_in_single_variable_is_unpacked(api, monkeypatch):
     monkeypatch.setenv("vercel_env", "# comment\nMOCK_MODE=1\nPLATFORM_COST_PER_MIN_INR=4.5\nbad line\n")
     s = settings_mod.reload()
     assert s.platform_cost_per_min == 4.5
+
+
+def test_bad_database_does_not_crash_startup_and_hides_password(tmp_path, monkeypatch):
+    monkeypatch.setenv("DB_PATH", str(tmp_path / "t.db"))
+    monkeypatch.setenv("DATABASE_URL", "postgresql://u:Sup3rSecretPw@127.0.0.1:1/postgres")
+    monkeypatch.setenv("RUN_SCHEDULER", "0")
+    settings_mod.reload()
+    from app.main import app
+    with TestClient(app) as c:
+        h = c.get("/health").json()
+        assert h["ok"] is False and "Database unreachable" in h["warning"]
+        assert "Sup3rSecretPw" not in str(h)
+        r = c.post("/tools/evaluate_enquiry", json={"caller_phone": PHONE, "facts": {}})
+        assert r.status_code == 200 and r.json()["say"] == FALLBACK  # caller still hears the safe line
