@@ -162,23 +162,66 @@ def test_widget_off_without_key(api):
     assert api.post("/api/vaani/session").status_code == 503
 
 
-def test_widget_session_and_limits(api, monkeypatch):
-    monkeypatch.setenv("VAANI_API_KEY", "test-key")
-    monkeypatch.setenv("VAANI_AGENT_ID", "agent-1")
+def test_vaani_webrtc_session_and_limits(api, monkeypatch):
+    monkeypatch.setenv("VAANI_API_KEY", "vaani_test")
+    monkeypatch.setenv("VAANI_AGENT_ID", "8cf3373e-eb6f-4b4c-9f3c-324a56a91147")
     settings_mod.reload()
     from app.routers import vaani_widget
     vaani_widget._recent.clear()
     seen = {}
 
-    def fake_post(url, headers=None, json=None, timeout=None):
+    def fake_post(url, json=None, timeout=None, headers=None):
         seen.update(url=url, headers=headers, json=json)
-        return httpx.Response(201, json={"session_token": "tok", "ws_url": "wss://x/ws/widget?token=tok", "expires_in": 300},
-                              request=httpx.Request("POST", url))
+        return httpx.Response(200, json={"token": "lk-tok", "room_name": "web-room-1", "connection_url": "wss://lk.example",
+                                         "live_captions_url": "https://cap.example/x"}, request=httpx.Request("POST", url))
     monkeypatch.setattr(vaani_widget.httpx, "post", fake_post)
-    r = api.post("/api/vaani/session", headers={"Origin": "https://aangan-voice-ten.vercel.app"})
-    assert r.status_code == 200 and r.json()["session_token"] == "tok"
-    assert seen["url"].endswith("/api/developer/v1/widget/session") and seen["headers"]["X-API-Key"] == "test-key"
-    assert seen["json"] == {"agent_id": "agent-1", "origin": "https://aangan-voice-ten.vercel.app", "force_audio": True}
-    assert "test-key" not in r.text  # the API key never reaches the browser
+    assert api.get("/api/vaani/status").json() == {"enabled": True, "max_minutes": 5, "provider": "vaani"}
+    r = api.post("/api/vaani/session", json={"language": "en"})
+    assert r.status_code == 200 and r.json()["token"] == "lk-tok" and r.json()["connection_url"] == "wss://lk.example"
+    assert seen["url"] == "https://api.vaanivoice.ai/api/trigger-call/" and seen["headers"]["X-API-Key"] == "vaani_test"
+    assert seen["json"]["medium"] == "webrtc" and seen["json"]["agent_id"].startswith("8cf3373e")
+    assert "vaani_test" not in r.text  # the API key never reaches the browser
+    assert db.row("SELECT id FROM calls WHERE id='web-room-1'")  # browser call is tracked like a phone call
     api.post("/api/vaani/session"); api.post("/api/vaani/session")
     assert api.post("/api/vaani/session").status_code == 429  # per-visitor limit
+
+
+# ---------------------------------------------------------------- Vaani webhook lifecycle
+def vaani(api, body):
+    r = api.post("/webhooks/vaani", json=body)
+    assert r.status_code == 200, r.text
+    return r.json()
+
+
+def test_vaani_call_lifecycle_qualified(api):
+    vaani(api, {"event": "call_started", "room_name": "room_1", "status": "active", "phone_number": "+919800000901"})
+    vaani(api, {"event": "call_ended", "room_name": "room_1", "call_duration": 182.5, "end_reason": "USER_HANGUP"})
+    out = vaani(api, {"event": "call_postprocessing", "call_id": "room_1", "data": {
+        "room_name": "room_1", "call_id": "room_1", "call_duration": 182500.0, "summary": "3BHK in Kothrud",
+        "recording_url": "https://rec/1", "transcript": "AGENT: Namaste ...",
+        "entities": {"caller_name": "Priya", "scope": "full_home", "locality": "Kothrud", "bhk": 3,
+                     "deadline_text": "by March", "is_decision_maker": "yes", "asked_price": "no"},
+        "dispositions": {"outcome": "new_enquiry"}}})
+    assert out["outcome"] == "QUALIFIED" and "handoff_designers" in out["actions"]
+    call = db.row("SELECT * FROM calls WHERE id='room_1'")
+    assert call["phone"] == "+919800000901" and call["duration_s"] == 182.5 and call["recording_url"] == "https://rec/1"
+    lead = db.row("SELECT * FROM leads WHERE call_id='room_1'")
+    assert lead["phone"] == "+919800000901" and lead["asked_price"] == 0
+    note = outbox("telegram")[0]["body"]
+    assert "Priya" in note and "Kothrud" in note and "3BHK in Kothrud" in note  # Vaani's summary rides along
+
+
+def test_vaani_silent_call_gets_one_callback(api):
+    vaani(api, {"event": "call_started", "room_name": "room_2", "phone_number": "+919800000902"})
+    out = vaani(api, {"event": "call_postprocessing", "call_id": "room_2", "data": {"room_name": "room_2",
+                      "call_duration": 9000, "end_reason": "silence", "entities": {}}})
+    assert out["actions"][0].startswith("callback:")
+    vaani(api, {"event": "call_postprocessing", "call_id": "room_2", "data": {"room_name": "room_2", "entities": {}}})
+    assert db.row("SELECT COUNT(*) AS n FROM callbacks WHERE phone='+919800000902'")["n"] == 1
+
+
+def test_vaani_requires_key_when_secret_set(api, monkeypatch):
+    monkeypatch.setenv("TOOL_SECRET", "s3cret")
+    settings_mod.reload()
+    assert api.post("/webhooks/vaani", json={"event": "call_started", "room_name": "r"}).status_code == 401
+    assert api.post("/webhooks/vaani?key=s3cret", json={"event": "call_started", "room_name": "r"}).status_code == 200

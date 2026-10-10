@@ -4,98 +4,206 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Talk to Aangan</title>
+<meta name="description" content="Talk to Aangan Studio's AI receptionist in English or Hindi, any hour. A designer calls you back with everything already noted.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=Instrument+Serif:ital@1&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 44'%3E%3Crect width='44' height='44' rx='11' fill='%23b24a22'/%3E%3Crect x='14' y='14' width='16' height='16' rx='3' fill='%23faf6ef'/%3E%3C/svg%3E">
 <style>
-  .talk { max-width: 980px; margin: 0 auto; padding: 22px 16px 80px; }
-  .talk-hero { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 32px; align-items: center; margin-top: 34px; }
-  @media (max-width: 820px) { .talk-hero { grid-template-columns: 1fr; } }
-  .talk h1 { font-size: clamp(40px, 6.4vw, 78px); line-height: .98; letter-spacing: -.04em; margin: 10px 0 18px; font-weight: 600; }
-  .talk h1 .line { display: block; overflow: hidden; }
-  .talk h1 .line span { display: inline-block; }
-  .talk h1 em { font-style: normal; color: var(--accent); }
-  .lede { font-size: 18px; color: var(--text-secondary); max-width: 40ch; margin: 0; }
-  .orb-card { background: var(--surface-1); border-radius: 28px; padding: 28px 24px; box-shadow: var(--shadow); text-align: center; }
-  .orb { width: 168px; height: 168px; border-radius: 50%; margin: 6px auto 18px; border: 0; cursor: pointer; position: relative;
-    background: var(--accent); color: #fff; display: grid; place-items: center; font: inherit; font-weight: 600; font-size: 15px; }
-  .orb:disabled { cursor: not-allowed; opacity: .55; }
-  .orb .ring { position: absolute; inset: -10px; border-radius: 50%; border: 2px solid var(--accent); opacity: .35; }
-  .orb svg { width: 44px; height: 44px; display: block; margin: 0 auto 6px; }
-  .consent { display: flex; gap: 10px; align-items: flex-start; text-align: left; font-size: 13.5px; color: var(--text-secondary);
-    background: var(--surface-2); border-radius: 14px; padding: 12px 14px; margin: 4px 0 12px; }
-  .consent input { margin-top: 3px; accent-color: var(--accent); }
-  .state { font-size: 14px; color: var(--text-secondary); min-height: 21px; }
-  .state.err { color: #c0392b; }
-  .phone { margin-top: 14px; font-size: 14px; color: var(--text-muted); }
-  .phone a { color: var(--text-primary); font-weight: 600; }
-  .steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-top: 56px; }
-  @media (max-width: 720px) { .steps { grid-template-columns: 1fr; } }
-  .step { background: var(--surface-1); border-radius: 18px; padding: 18px; box-shadow: var(--shadow); }
-  .step b { display: block; font-size: 15px; margin: 6px 0 4px; }
-  .step p { margin: 0; font-size: 13.5px; color: var(--text-secondary); }
-  .step .n { font-size: 12px; color: var(--accent); font-weight: 600; letter-spacing: .04em; }
-  #widget-host { margin-top: 10px; }
+  .t-wrap { max-width: 1160px; margin: 0 auto; padding: 18px 20px 0; }
+  .t-nav { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+  .t-brand { display: flex; gap: 12px; align-items: center; text-decoration: none; color: var(--text-primary); }
+  .t-brand b { font-size: 18px; letter-spacing: -.01em; }
+  .t-brand small { display: block; color: var(--text-secondary); font-size: 12.5px; font-weight: 400; }
+
+  /* ---- hero ---- */
+  .hero2 { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr); gap: 40px; align-items: center;
+    min-height: calc(100vh - 90px); padding: 40px 0 60px; }
+  @media (max-width: 900px) { .hero2 { grid-template-columns: 1fr; min-height: auto; padding-top: 28px; } }
+  .h-title { font-size: clamp(46px, 7.6vw, 104px); line-height: .92; letter-spacing: -.045em; font-weight: 600; margin: 14px 0 22px; }
+  .h-title .ln { display: block; overflow: hidden; padding-bottom: .06em; }
+  .h-title .ln > span { display: inline-block; }
+  .h-title em { font-family: "Instrument Serif", Georgia, serif; font-style: italic; font-weight: 400; color: var(--accent); letter-spacing: -.02em; }
+  .h-lede { font-size: clamp(17px, 1.6vw, 20px); color: var(--text-secondary); max-width: 44ch; margin: 0 0 22px; line-height: 1.5; }
+  .h-proof { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { font-size: 12.5px; color: var(--text-secondary); border: 1px solid var(--hairline); border-radius: 999px; padding: 6px 11px; }
+
+  /* ---- call card ---- */
+  .call { background: var(--surface-1); border-radius: 30px; padding: 22px; box-shadow: var(--shadow); position: relative; overflow: hidden; }
+  .call-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .live { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--text-secondary); }
+  .live i { width: 8px; height: 8px; border-radius: 50%; background: var(--text-muted); }
+  .live.on i { background: #22a06b; box-shadow: 0 0 0 4px rgba(34,160,107,.18); }
+  .lang { display: inline-flex; background: var(--surface-2); border-radius: 999px; padding: 3px; }
+  .lang button { border: 0; background: transparent; font: inherit; font-size: 13px; padding: 5px 11px; border-radius: 999px; color: var(--text-secondary); cursor: pointer; }
+  .lang button[aria-pressed="true"] { background: var(--surface-1); color: var(--text-primary); box-shadow: var(--shadow); }
+  .orb-stage { display: grid; place-items: center; height: 250px; position: relative; }
+  .orb2 { width: 150px; height: 150px; border-radius: 50%; border: 0; cursor: pointer; position: relative; z-index: 2; color: #fff;
+    background: radial-gradient(circle at 32% 30%, #e98a5e, var(--accent) 58%, #7e2f12); font: inherit; font-weight: 600; font-size: 14px;
+    display: grid; place-items: center; transition: transform .2s; }
+  .orb2:disabled { cursor: not-allowed; filter: grayscale(.4); opacity: .7; }
+  .orb2:not(:disabled):hover { transform: scale(1.03); }
+  .orb2 svg { width: 38px; height: 38px; display: block; margin: 0 auto 4px; }
+  .halo { position: absolute; width: 150px; height: 150px; border-radius: 50%; background: var(--accent); opacity: .12; z-index: 1; }
+  .halo.h2 { opacity: .07; }
+  .consent2 { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; color: var(--text-secondary); background: var(--surface-2);
+    border-radius: 14px; padding: 11px 13px; }
+  .consent2 input { margin-top: 3px; accent-color: var(--accent); }
+  .status2 { text-align: center; font-size: 14px; color: var(--text-secondary); min-height: 21px; margin: 12px 0 6px; }
+  .status2.err { color: #c0392b; }
+  .captions { height: 132px; overflow-y: auto; border-top: 1px solid var(--hairline); margin-top: 10px; padding-top: 10px; font-size: 14px;
+    display: flex; flex-direction: column; gap: 6px; scroll-behavior: smooth; }
+  .captions:empty::before { content: "Live captions appear here during the call."; color: var(--text-muted); font-size: 13px; }
+  .cap b { font-weight: 600; color: var(--text-primary); margin-right: 6px; }
+  .cap { color: var(--text-secondary); line-height: 1.4; }
+  .cap.me b { color: var(--accent); }
+  .end { display: none; margin: 8px auto 0; border: 1px solid var(--hairline); background: transparent; color: var(--text-primary);
+    font: inherit; font-size: 13px; padding: 7px 14px; border-radius: 999px; cursor: pointer; }
+  .call.oncall .end { display: block; }
+  .phone2 { text-align: center; font-size: 13px; color: var(--text-muted); margin-top: 10px; }
+  .phone2 a { color: var(--text-primary); font-weight: 600; }
+
+  /* ---- marquee ---- */
+  .marq { border-block: 1px solid var(--hairline); overflow: hidden; white-space: nowrap; padding: 16px 0; margin: 10px 0 0; }
+  .marq-track { display: inline-flex; gap: 38px; font-size: clamp(20px, 2.6vw, 32px); letter-spacing: -.02em; color: var(--text-secondary); }
+  .marq-track span::after { content: "✦"; margin-left: 38px; color: var(--accent); font-size: .6em; vertical-align: middle; }
+
+  /* ---- pinned story ---- */
+  .story { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 50px; padding: 90px 0; }
+  @media (max-width: 900px) { .story { grid-template-columns: 1fr; padding: 60px 0; } }
+  .story-left h2 { font-size: clamp(34px, 4.6vw, 60px); line-height: 1; letter-spacing: -.035em; margin: 10px 0 14px; font-weight: 600; }
+  .story-left p { color: var(--text-secondary); max-width: 38ch; }
+  .progress { height: 3px; background: var(--hairline); border-radius: 3px; margin-top: 24px; overflow: hidden; max-width: 320px; }
+  .progress i { display: block; height: 100%; width: 0; background: var(--accent); }
+  .beats { display: grid; gap: 16px; }
+  .beat { background: var(--surface-1); border-radius: 22px; padding: 24px; box-shadow: var(--shadow); }
+  .beat .n { font-size: 12px; color: var(--accent); font-weight: 600; letter-spacing: .06em; }
+  .beat h3 { font-size: 22px; letter-spacing: -.02em; margin: 6px 0 6px; }
+  .beat p { margin: 0; color: var(--text-secondary); font-size: 15px; }
+
+  /* ---- closer ---- */
+  .closer { text-align: center; padding: 70px 0 30px; }
+  .closer h2 { font-size: clamp(36px, 6vw, 84px); letter-spacing: -.045em; line-height: .95; margin: 0 0 18px; font-weight: 600; }
+  .closer h2 em { font-family: "Instrument Serif", Georgia, serif; font-style: italic; font-weight: 400; color: var(--accent); }
+  .closer .talk-btn { font-size: 15px; padding: 12px 20px; }
+  .t-foot { color: var(--text-muted); font-size: 12.5px; text-align: center; padding: 30px 0 40px; }
+  @media (prefers-reduced-motion: reduce) { .marq-track { transform: none !important; } }
+  @media (max-width: 560px) {
+    .t-brand small { display: none; }
+    .t-nav .controls { flex-wrap: nowrap; gap: 6px; }
+    .t-nav .icon-btn { padding: 6px 10px; font-size: 12.5px; white-space: nowrap; }
+    .orb-stage { height: 210px; }
+  }
 </style>
 </head>
 <body>
-<div class="talk">
-  <header class="mast">
-    <div class="brand">
-      <svg class="brand-mark" viewBox="0 0 44 44" aria-hidden="true">
-        <rect width="44" height="44" rx="11" fill="var(--accent)"/>
-        <rect x="14" y="14" width="16" height="16" rx="3" fill="var(--surface-1)"/>
-        <circle cx="22" cy="22" r="3" fill="var(--s4)"/>
-      </svg>
-      <div><p style="font-size:20px;font-weight:600;letter-spacing:-.01em;margin:0">Aangan Studio</p>
-        <p style="margin:2px 0 0;color:var(--text-secondary);font-size:13.5px">Interior design · Pune & PCMC</p></div>
-    </div>
+<div class="t-wrap">
+  <nav class="t-nav" aria-label="Main">
+    <a class="t-brand" href="talk.html">
+      <svg class="brand-mark" viewBox="0 0 44 44" aria-hidden="true"><rect width="44" height="44" rx="11" fill="var(--accent)"/>
+        <rect x="14" y="14" width="16" height="16" rx="3" fill="var(--surface-1)"/><circle cx="22" cy="22" r="3" fill="var(--s4)"/></svg>
+      <span><b>Aangan Studio</b><small>Interior design · Pune &amp; PCMC</small></span>
+    </a>
     <div class="controls">
       <a class="icon-btn" href="index.html" style="text-decoration:none">Studio dashboard</a>
-      <button class="icon-btn" type="button" data-theme-toggle aria-label="Switch light or dark theme">◐ Theme</button>
+      <button class="icon-btn" type="button" data-theme-toggle aria-label="Switch light or dark theme">◐</button>
     </div>
-  </header>
+  </nav>
 
-  <section class="talk-hero">
+  <section class="hero2">
     <div>
       <div class="kicker">{ Our receptionist, any hour }</div>
-      <h1><span class="line"><span>Tell us about</span></span><span class="line"><span>your home.</span></span>
-          <span class="line"><span><em>Day or night.</em></span></span></h1>
-      <p class="lede">Talk to Aangan's AI receptionist in English or Hindi. Share your project, and a designer
-        calls you back with everything you said already in hand, so you never repeat yourself.</p>
+      <h1 class="h-title" aria-label="Tell us about your home. Day or night.">
+        <span class="ln"><span>Tell us about</span></span>
+        <span class="ln"><span>your home.</span></span>
+        <span class="ln"><span><em>Day or night.</em></span></span>
+      </h1>
+      <p class="h-lede">Talk to Aangan's AI receptionist in English or Hindi. Share your project, and a designer calls
+        you back with everything you said already in hand, so you never repeat yourself.</p>
+      <div class="h-proof"><span class="chip">Answers 24×7</span><span class="chip">English · हिन्दी</span>
+        <span class="chip">Our own rules decide, not the AI</span><span class="chip">Free consultation</span></div>
     </div>
-    <div class="orb-card">
-      <label class="consent"><input type="checkbox" id="consent">
-        <span>I understand I'm talking to an <b>AI assistant</b> and that the call is <b>recorded</b> so a designer can follow up.</span></label>
-      <button class="orb" id="orb" type="button" disabled aria-describedby="state">
-        <span class="ring" aria-hidden="true"></span>
-        <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
-          <rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>Start talking</span>
-      </button>
-      <div class="state" id="state" role="status">Checking the line…</div>
-      <div id="widget-host"></div>
-      <div class="phone">Prefer the phone? Call <a href="tel:+917965250813">+91 79652 50813</a></div>
-    </div>
-  </section>
 
-  <section class="steps">
-    <div class="step"><span class="n">01</span><b>You talk, it listens</b><p>One question at a time: your space, your area, when you need it done.</p></div>
-    <div class="step"><span class="n">02</span><b>Our rules decide, not the AI</b><p>The studio's own criteria are applied in code, the same way every time.</p></div>
-    <div class="step"><span class="n">03</span><b>A designer calls you</b><p>With your notes in hand. You can also pick a consultation time yourself.</p></div>
+    <div class="call" id="call">
+      <div class="call-top">
+        <span class="live" id="live"><i></i><span id="liveText">Ready</span></span>
+        <div class="lang" role="group" aria-label="Language">
+          <button type="button" data-lang="en" aria-pressed="true">English</button>
+          <button type="button" data-lang="hi" aria-pressed="false">हिन्दी</button>
+        </div>
+      </div>
+      <div class="orb-stage">
+        <span class="halo" id="halo1" aria-hidden="true"></span><span class="halo h2" id="halo2" aria-hidden="true"></span>
+        <button class="orb2" id="orb" type="button" disabled aria-describedby="status">
+          <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+            <rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg><span id="orbLabel">Start talking</span></span>
+        </button>
+      </div>
+      <label class="consent2"><input type="checkbox" id="consent">
+        <span>I understand I'm talking to an <b>AI assistant</b> and the call is <b>recorded</b> so a designer can follow up.</span></label>
+      <div class="status2" id="status" role="status">Checking the line…</div>
+      <div class="captions" id="captions" aria-live="polite" aria-label="Live captions"></div>
+      <button class="end" id="end" type="button">End call</button>
+      <div class="phone2">Prefer the phone? Call <a href="tel:+917965250813">+91 79652 50813</a></div>
+    </div>
   </section>
-  <p class="foot">MESA Case 03 demo build. Pricing is never discussed on the call; your designer covers it at the consultation.</p>
 </div>
 
+<div class="marq" aria-label="Areas we design in">
+  <div class="marq-track" id="marq">
+    <span>Kothrud</span><span>Baner</span><span>Aundh</span><span>Wakad</span><span>Koregaon Park</span><span>Kalyani Nagar</span>
+    <span>Viman Nagar</span><span>Hadapsar</span><span>Magarpatta</span><span>NIBM</span><span>Pimple Saudagar</span><span>Hinjewadi</span>
+    <span>Kothrud</span><span>Baner</span><span>Aundh</span><span>Wakad</span><span>Koregaon Park</span><span>Kalyani Nagar</span>
+    <span>Viman Nagar</span><span>Hadapsar</span><span>Magarpatta</span><span>NIBM</span><span>Pimple Saudagar</span><span>Hinjewadi</span>
+  </div>
+</div>
+
+<div class="t-wrap">
+  <section class="story" id="story">
+    <div class="story-left">
+      <div class="kicker">{ How it works }</div>
+      <h2>From hello to a designer's call.</h2>
+      <p>Every call follows the studio's own rulebook, written by Nikhil. The AI listens and asks; the rules decide.</p>
+      <div class="progress" aria-hidden="true"><i id="prog"></i></div>
+    </div>
+    <div class="beats">
+      <article class="beat"><span class="n">01 · YOU TALK</span><h3>One question at a time</h3>
+        <p>Your space, where it is, roughly how big, and when you'd like it finished. No forms, no hold music.</p></article>
+      <article class="beat"><span class="n">02 · THE RULES DECIDE</span><h3>The same answer every time</h3>
+        <p>Area, timeline and scope are checked in code against the studio's criteria, not guessed by the AI.</p></article>
+      <article class="beat"><span class="n">03 · A DESIGNER CLAIMS IT</span><h3>Minutes, not days</h3>
+        <p>Your notes reach the design team instantly. The first designer free takes your call.</p></article>
+      <article class="beat"><span class="n">04 · YOU MEET</span><h3>A free consultation</h3>
+        <p>Pick a time from a link, or arrange it on the call back. Pricing is covered there, with your actual site in mind.</p></article>
+    </div>
+  </section>
+
+  <section class="closer">
+    <div class="kicker">{ Ready when you are }</div>
+    <h2>Your home, <em>talked through.</em></h2>
+    <a class="talk-btn" href="#call"><span class="dot"></span>Start a call</a>
+  </section>
+  <p class="t-foot">MESA Case 03 demo build · AI receptionist powered by Vaani · Calls are recorded · No prices are discussed on the call.</p>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/livekit-client@2.9.0/dist/livekit-client.umd.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
 <script>
 (() => {
   const $ = s => document.querySelector(s);
-  const orb = $("#orb"), state = $("#state"), consent = $("#consent");
-  let enabled = false, loaded = false;
-  const say = (t, err) => { state.textContent = t; state.classList.toggle("err", !!err); };
-  const refresh = () => { orb.disabled = !(enabled && consent.checked) || loaded; };
+  const orb = $("#orb"), status = $("#status"), consent = $("#consent"), caps = $("#captions"), card = $("#call");
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let enabled = false, room = null, lang = "en", meter = null;
+  const say = (t, err) => { status.textContent = t; status.classList.toggle("err", !!err); };
+  const live = (on, text) => { $("#live").classList.toggle("on", on); $("#liveText").textContent = text; };
+  const refresh = () => { orb.disabled = !(enabled && consent.checked) || !!room; };
+
+  document.querySelectorAll("[data-lang]").forEach(b => b.addEventListener("click", () => {
+    lang = b.dataset.lang;
+    document.querySelectorAll("[data-lang]").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+  }));
 
   fetch("/api/vaani/status").then(r => r.json()).then(s => {
     enabled = !!s.enabled;
@@ -105,30 +213,74 @@
   }).catch(() => say("Couldn't reach the line. Please call the number below.", true));
   consent.addEventListener("change", refresh);
 
-  // Load VaniAgent's official widget (its own mic + audio handling). Our server keeps the API key.
-  orb.addEventListener("click", async () => {
-    if (!consent.checked) return say("Please tick the box first.", true);
-    orb.disabled = true; say("Connecting you to the receptionist…");
-    try {
-      const r = await fetch("/api/vaani/embed");
-      if (!r.ok) throw new Error((await r.json()).detail || "unavailable");
-      const { html_snippet } = await r.json();
-      const host = $("#widget-host");
-      host.innerHTML = html_snippet;
-      host.querySelectorAll("script").forEach(old => {           // innerHTML doesn't run scripts: re-create them
-        const s = document.createElement("script");
-        [...old.attributes].forEach(a => s.setAttribute(a.name, a.value));
-        s.textContent = old.textContent; old.replaceWith(s);
-      });
-      loaded = true;
-      say("Connected. Allow the microphone when your browser asks, then say Namaste.");
-    } catch (e) {
-      orb.disabled = false;
-      say(e.message + ". Please call the number below.", true);
+  // ---- live captions (LiveKit transcription events from the Vaani agent) ----
+  const lines = new Map();
+  function caption(segments, participant) {
+    const me = participant && room && participant.identity === room.localParticipant.identity;
+    for (const seg of segments) {
+      let el = lines.get(seg.id);
+      if (!el) { el = document.createElement("div"); el.className = "cap" + (me ? " me" : "");
+        el.innerHTML = `<b>${me ? "You" : "Aangan"}</b><span></span>`; caps.append(el); lines.set(seg.id, el); }
+      el.querySelector("span").textContent = seg.text;
     }
-  });
+    caps.scrollTop = caps.scrollHeight;
+  }
 
-  // theme toggle (shared with the dashboard)
+  // ---- the orb follows whoever is speaking ----
+  function startMeter() {
+    if (reduce) return;
+    meter = setInterval(() => {
+      if (!room) return;
+      let level = 0;
+      room.remoteParticipants.forEach(p => { level = Math.max(level, p.audioLevel || 0); });
+      const mine = room.localParticipant.audioLevel || 0;
+      const l = Math.max(level, mine * 0.6);
+      gsap.to("#halo1", { scale: 1 + l * 1.6, duration: 0.18, overwrite: true });
+      gsap.to("#halo2", { scale: 1 + l * 2.6, duration: 0.3, overwrite: true });
+    }, 90);
+  }
+
+  async function start() {
+    if (!consent.checked) return say("Please tick the box first.", true);
+    if (!window.LivekitClient) return say("Your browser blocked the voice library. Please call the number below.", true);
+    orb.disabled = true; say("Connecting you to the receptionist…"); live(false, "Connecting");
+    try {
+      const r = await fetch("/api/vaani/session", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ language: lang }) });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.detail || "unavailable");
+      const { Room, RoomEvent, Track } = LivekitClient;
+      room = new Room({ adaptiveStream: true, dynacast: true });
+      room.on(RoomEvent.TrackSubscribed, (track) => {
+        if (track.kind === Track.Kind.Audio) { const el = track.attach(); el.hidden = true; document.body.append(el); }
+      });
+      room.on(RoomEvent.TranscriptionReceived, caption);
+      room.on(RoomEvent.Disconnected, stop);
+      await room.connect(data.connection_url, data.token);
+      await room.startAudio();
+      await room.localParticipant.setMicrophoneEnabled(true);
+      card.classList.add("oncall"); $("#orbLabel").textContent = "On call";
+      live(true, "Live"); say("You're through. Say Namaste and tell us about your home.");
+      startMeter();
+    } catch (e) {
+      room = null; live(false, "Ready"); refresh();
+      const msg = String(e.message || e);
+      say((/permission|denied|NotAllowed/i.test(msg) ? "Please allow the microphone, then try again." : msg) +
+          " You can also call the number below.", true);
+    }
+  }
+  function stop() {
+    if (meter) clearInterval(meter); meter = null;
+    if (room) { const r = room; room = null; r.disconnect(); }
+    card.classList.remove("oncall"); $("#orbLabel").textContent = "Start talking"; live(false, "Ended");
+    say("Thank you! A designer will call you back on the number you share, or pick a time when we send you a link.");
+    gsap.to(["#halo1", "#halo2"], { scale: 1, duration: 0.4 }); refresh();
+  }
+  orb.addEventListener("click", start);
+  $("#end").addEventListener("click", stop);
+  addEventListener("pagehide", () => room && room.disconnect());
+
+  // ---- theme ----
   try { const t = localStorage.getItem("aangan-theme"); if (t) document.documentElement.dataset.theme = t; } catch {}
   document.querySelector("[data-theme-toggle]").addEventListener("click", () => {
     const dark = document.documentElement.dataset.theme ? document.documentElement.dataset.theme === "dark"
@@ -137,11 +289,26 @@
     try { localStorage.setItem("aangan-theme", document.documentElement.dataset.theme); } catch {}
   });
 
-  // motion: headline lines rise, the orb breathes (skipped for reduced motion)
-  if (window.gsap && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
-    gsap.from(".talk h1 .line span", { yPercent: 110, duration: 0.9, ease: "power4.out", stagger: 0.12 });
-    gsap.from(".lede, .orb-card, .step", { y: 24, opacity: 0, duration: 0.8, ease: "power3.out", stagger: 0.08, delay: 0.35 });
-    gsap.to(".orb .ring", { scale: 1.12, opacity: 0, duration: 1.8, repeat: -1, ease: "power1.out" });
+  // ---- motion (GSAP) ----
+  if (window.gsap && !reduce) {
+    gsap.registerPlugin(ScrollTrigger);
+    gsap.from(".h-title .ln > span", { yPercent: 115, duration: 1.0, ease: "power4.out", stagger: 0.12 });
+    gsap.from(".h-lede, .h-proof .chip", { y: 18, opacity: 0, duration: 0.7, ease: "power3.out", stagger: 0.06, delay: 0.4 });
+    gsap.from(".call", { y: 40, opacity: 0, scale: 0.97, duration: 0.9, ease: "power3.out", delay: 0.25 });
+    gsap.to("#halo2", { scale: 1.35, opacity: 0, duration: 2.2, repeat: -1, ease: "sine.out" });
+    // marquee: endless, and it speeds up a little while you scroll
+    const track = $("#marq"), loop = gsap.to(track, { xPercent: -50, ease: "none", duration: 34, repeat: -1 });
+    ScrollTrigger.create({ onUpdate: self => gsap.to(loop, { timeScale: 1 + Math.min(Math.abs(self.getVelocity()) / 900, 3),
+      duration: 0.2, overwrite: true, onComplete: () => gsap.to(loop, { timeScale: 1, duration: 0.8 }) }) });
+    // story: the left column pins while the beats scroll past; the bar fills
+    const mm = gsap.matchMedia();
+    mm.add("(min-width: 901px)", () => {
+      ScrollTrigger.create({ trigger: "#story", start: "top 80px", end: "bottom bottom", pin: ".story-left", pinSpacing: false });
+    });
+    gsap.to("#prog", { width: "100%", ease: "none", scrollTrigger: { trigger: "#story", start: "top 70%", end: "bottom 60%", scrub: true } });
+    gsap.utils.toArray(".beat").forEach(b => gsap.from(b, { y: 50, opacity: 0, duration: 0.8, ease: "power3.out",
+      scrollTrigger: { trigger: b, start: "top 88%", once: true } }));
+    gsap.from(".closer h2", { y: 40, opacity: 0, duration: 1, ease: "power4.out", scrollTrigger: { trigger: ".closer", start: "top 85%", once: true } });
   }
 })();
 </script>

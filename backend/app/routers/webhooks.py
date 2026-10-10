@@ -142,6 +142,88 @@ async def call_ended(request: Request):
         return {"ok": False, "error": "logged"}
 
 
+# ---------------------------------------------------------------- Vaani AI webhook
+# Vaani (docs.vaanivoice.ai/guides/webhook-setup, read 2026-10-11) POSTs lifecycle events:
+#   call_started {event, room_name, phone_number}        call_ended {event, room_name, call_duration (s), end_reason}
+#   call_postprocessing {event, call_id, timestamp, data{room_name, call_id, call_duration (ms), end_reason,
+#                        summary, entities{...}, dispositions{...}, recording_url, transcript}}
+# The caller's number only arrives in call_started, so we keep it on the call row and use it later.
+# No signature is documented: authenticate with ?key=TOOL_SECRET on the webhook URL.
+VAANI_LOGGED = {"call_ringing", "user_picked_up_at", "human_transfer_initiated", "human_transfer_successful",
+                "human_transfer_failed", "call_rejected", "call_no_answer", "call_failed"}
+
+
+def process_vaani(body: dict) -> dict:
+    event = str(body.get("event") or "").lower()
+    data = body.get("data") if isinstance(body.get("data"), dict) else {}
+    room = str(data.get("room_name") or data.get("call_id") or body.get("room_name") or body.get("call_id") or "") or None
+    if not room:
+        return {"ok": False, "error": "no room_name/call_id"}
+    now = clock.iso(clock.now())
+    existing = db.row("SELECT * FROM calls WHERE id=?", room)
+    if event == "call_started":
+        phone = payloads.normalise_phone(body.get("phone_number") or data.get("phone_number"))
+        if existing:
+            if phone and not existing.get("phone"):
+                db.update("calls", room, {"phone": phone})
+        else:
+            db.insert("calls", {"id": room, "phone": phone, "started_at": now, "created_at": now})
+        return {"ok": True, "event": event}
+    if event in VAANI_LOGGED:
+        db.insert("events", {"ts": now, "type": f"vaani_{event}", "call_id": room, "data": json.dumps(body)[:900]})
+        if event in ("call_rejected", "call_no_answer", "call_failed") and existing and existing.get("phone"):
+            callbacks.queue(existing["phone"], callbacks.DROPPED, room, note=event)
+        return {"ok": True, "event": event}
+    if event == "call_ended":
+        dur = body.get("call_duration") or data.get("call_duration")
+        upd = {"ended_at": now, "ended_reason": body.get("end_reason") or data.get("end_reason")}
+        if dur is not None:
+            upd["duration_s"] = float(dur)
+        if existing:
+            db.update("calls", room, {k: v for k, v in upd.items() if v is not None})
+        else:
+            db.insert("calls", {"id": room, "started_at": now, "created_at": now, **{k: v for k, v in upd.items() if v is not None}})
+        return {"ok": True, "event": event}
+    if event == "call_postprocessing":
+        phone = (existing or {}).get("phone") or payloads.normalise_phone(data.get("phone_number") or body.get("phone_number"))
+        dur_ms = data.get("call_duration")
+        upd = {"summary": data.get("summary"), "transcript": data.get("transcript"), "recording_url": data.get("recording_url"),
+               "raw": json.dumps(body, ensure_ascii=False)[:20000]}
+        if dur_ms is not None:
+            upd["duration_s"] = round(float(dur_ms) / 1000, 1)
+        if not existing:
+            db.insert("calls", {"id": room, "phone": phone, "started_at": now, "created_at": now})
+        db.update("calls", room, {k: v for k, v in upd.items() if v is not None})
+        entities = data.get("entities") if isinstance(data.get("entities"), dict) else {}
+        if not entities:
+            # Nothing extracted (hung up early / silent): treat as dropped, one callback, never 9pm-9am.
+            lead = _find_lead(room, phone)
+            if not lead or lead.get("outcome") in (None, "ASK"):
+                cb = callbacks.queue(phone, callbacks.DROPPED, room, note=data.get("end_reason") or "no details captured")
+                return {"ok": True, "event": event, "actions": [f"callback:{cb['due_at'] if cb else 'skipped'}"]}
+            return {"ok": True, "event": event, "actions": []}
+        out = process_capture({"call_id": room, "phone": phone, "entities": entities,
+                               "dispositions": data.get("dispositions")})
+        return {"event": event, **out}
+    return {"ok": True, "ignored": event or "unknown"}
+
+
+@router.post("/webhooks/vaani")
+async def vaani_webhook(request: Request):
+    raw = await request.body()
+    _verify_webhook(raw, request)
+    try:
+        body = json.loads(raw or b"{}")
+    except ValueError:
+        body = {}
+    try:
+        return process_vaani(body if isinstance(body, dict) else {})
+    except Exception as e:  # noqa: BLE001
+        log.exception("vaani webhook failed")
+        db.insert("events", {"ts": clock.iso(clock.now()), "type": "webhook_failed", "data": str(e)[:300]})
+        return {"ok": False, "error": "logged"}
+
+
 # ---------------------------------------------------------------- Telegram claim
 def _who(user: dict) -> str:
     name = " ".join(x for x in (user.get("first_name"), user.get("last_name")) if x)

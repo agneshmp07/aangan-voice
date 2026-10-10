@@ -67,7 +67,7 @@ class Settings:
     public_base_url: str = "http://localhost:8000"
 
     # Guardrails
-    tool_timeout_s: float = 2.5             # worst case: 0.5 body + 2.5 tool + 0.5 fallback = 3.5s < 4s
+    tool_timeout_s: float = 2.0             # worst case: 0.5 body + 2.5 tool + 0.5 fallback = 3.5s < 4s
     quiet_start_hour: int = 21              # no callbacks 9pm–9am
     quiet_end_hour: int = 9
     callback_delay_min: int = 10            # wait before calling a dropped caller back
@@ -128,7 +128,7 @@ class Settings:
     # HMAC-SHA256 hex of the body in X-Vaniagent-Signature; REST base https://api.vaniagent.com/v1
     vaani_webhook_secret: str | None = None
     # Real base per the VaniAgent dashboard + OpenAPI (2026-10-10); auth header is X-API-Key.
-    vaani_api_base: str = "https://api.vaniagent.com/api/developer/v1"
+    vaani_api_base: str = "https://api.vaanivoice.ai"
     vaani_agent_id: str | None = None
     # Browser voice widget limits (each session costs call minutes)
     widget_max_session_minutes: int = 5
@@ -153,7 +153,7 @@ def load() -> Settings:
         tool_secret=e("TOOL_SECRET") or None,
         cron_secret=e("CRON_SECRET") or None,
         public_base_url=e("PUBLIC_BASE_URL", "http://localhost:8000"),
-        tool_timeout_s=_f("TOOL_TIMEOUT_S", 2.5),
+        tool_timeout_s=_f("TOOL_TIMEOUT_S", 2.0),
         callback_delay_min=int(_f("CALLBACK_DELAY_MIN", 10)),
         callback_dedupe_hours=int(_f("CALLBACK_DEDUPE_HOURS", 24)),
         dropped_call_max_s=int(_f("DROPPED_CALL_MAX_S", 90)),
@@ -189,7 +189,7 @@ def load() -> Settings:
         vaani_outbound_url=e("VAANI_OUTBOUND_URL") or None,
         vaani_api_key=e("VAANI_API_KEY") or None,
         vaani_webhook_secret=e("VAANI_WEBHOOK_SECRET") or None,
-        vaani_api_base=e("VAANI_API_BASE", "https://api.vaniagent.com/api/developer/v1"),
+        vaani_api_base=e("VAANI_API_BASE") or "https://api.vaanivoice.ai",
         vaani_agent_id=e("VAANI_AGENT_ID") or None,
         widget_max_session_minutes=int(_f("WIDGET_MAX_SESSION_MINUTES", 5)),
         widget_max_daily_sessions=int(_f("WIDGET_MAX_DAILY_SESSIONS", 30)),
