@@ -12,7 +12,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import db
-from .routers import metrics, pages, tools, vaani_widget, webhooks
+from .routers import inbox, metrics, pages, tools, vaani_widget, webhooks
 from .services import callbacks, leads
 from .settings import ROOT, settings
 
@@ -57,6 +57,7 @@ app.include_router(webhooks.router)
 app.include_router(metrics.router)
 app.include_router(vaani_widget.router)
 app.include_router(pages.router)
+app.include_router(inbox.router)
 
 _dash = ROOT / "dashboard"
 if _dash.exists():

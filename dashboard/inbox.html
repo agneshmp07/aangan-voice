@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Designer Inbox</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Instrument+Serif:ital@1&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 44'%3E%3Crect width='44' height='44' rx='11' fill='%23b24a22'/%3E%3Crect x='14' y='14' width='16' height='16' rx='3' fill='%23faf6ef'/%3E%3C/svg%3E">
+<style>
+  body { background: var(--bg); color: var(--text-primary); margin: 0; font-family: "Instrument Sans", system-ui, sans-serif; }
+  .ib { max-width: 1320px; margin: 0 auto; padding: 28px 24px 120px; }
+  .ib-top { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; justify-content: space-between; margin-bottom: 26px; }
+  .kick { font-size: 13px; letter-spacing: .02em; color: var(--text-muted); }
+  .ib h1 { font-size: clamp(34px, 5vw, 60px); line-height: .98; letter-spacing: -.035em; margin: 8px 0 0; font-weight: 600; }
+  .ib h1 em { font-family: "Instrument Serif", serif; font-weight: 400; color: var(--accent); }
+  .ib-tools { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .pill { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--hairline); background: var(--surface-1);
+    color: var(--text-primary); border-radius: 999px; padding: 9px 14px; font: inherit; font-size: 14px; text-decoration: none; cursor: pointer; }
+  .pill:focus-visible, .chip:focus-visible, .row:focus-visible, .act:focus-visible { outline: 3px solid var(--s1); outline-offset: 2px; }
+  select.pill { appearance: none; padding-right: 30px; background-image: linear-gradient(45deg, transparent 50%, var(--text-muted) 50%), linear-gradient(135deg, var(--text-muted) 50%, transparent 50%);
+    background-position: calc(100% - 16px) 52%, calc(100% - 11px) 52%; background-size: 5px 5px; background-repeat: no-repeat; }
+
+  .stats { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin-bottom: 22px; }
+  .stat { background: var(--surface-1); border: 1px solid var(--hairline); border-radius: 18px; padding: 16px 18px; }
+  .stat b { display: block; font-size: 30px; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+  .stat span { font-size: 13px; color: var(--text-muted); }
+
+  .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 14px; }
+  .chip { border: 1px solid var(--hairline); background: transparent; color: var(--text-secondary); border-radius: 999px; padding: 7px 13px; font: inherit; font-size: 13px; cursor: pointer; }
+  .chip[aria-pressed="true"] { background: var(--text-primary); color: var(--bg); border-color: var(--text-primary); }
+  .chip .n { opacity: .65; margin-left: 4px; font-variant-numeric: tabular-nums; }
+  .search { flex: 1 1 220px; min-width: 0; border: 1px solid var(--hairline); background: var(--surface-1); color: var(--text-primary);
+    border-radius: 999px; padding: 9px 16px; font: inherit; font-size: 14px; }
+
+  .grid { display: grid; grid-template-columns: minmax(300px, 420px) minmax(0, 1fr); gap: 18px; align-items: start; }
+  .list { display: flex; flex-direction: column; gap: 8px; max-height: calc(100vh - 160px); overflow: auto; padding-right: 4px; position: sticky; top: 16px; }
+  .row { text-align: left; width: 100%; border: 1px solid var(--hairline); background: var(--surface-1); color: inherit; border-radius: 16px;
+    padding: 14px 16px; cursor: pointer; display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; font: inherit; transition: border-color .15s, transform .15s; }
+  .row:hover { border-color: var(--text-muted); }
+  .row[aria-current="true"] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+  .row .nm { font-weight: 600; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row .tm { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
+  .row .sub { grid-column: 1 / -1; font-size: 13px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row .tags { grid-column: 1 / -1; display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+
+  .tag { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 999px;
+    background: color-mix(in srgb, var(--c, var(--text-muted)) 14%, transparent); color: var(--text-primary); }
+  .tag::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--c, var(--text-muted)); }
+  .st-booked { --c: var(--s1); } .st-qualified { --c: var(--s3); } .st-won { --c: var(--s3); } .st-client { --c: var(--s5); }
+  .st-nurture { --c: var(--s4); } .st-incomplete { --c: var(--s4); } .st-declined { --c: var(--text-muted); } .st-lost { --c: var(--text-muted); }
+  .st-dropped { --c: var(--s2); } .t-warn { --c: var(--s2); }
+
+  .detail { background: var(--surface-1); border: 1px solid var(--hairline); border-radius: 24px; padding: 28px; min-height: 420px; }
+  .d-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 16px; align-items: flex-start; }
+  .d-head h2 { font-size: clamp(26px, 3.4vw, 40px); letter-spacing: -.03em; margin: 6px 0 4px; line-height: 1.05; }
+  .d-head .meta { color: var(--text-secondary); font-size: 14px; }
+  .acts { display: flex; flex-wrap: wrap; gap: 8px; }
+  .act { border: 1px solid var(--hairline); background: var(--surface-2); color: var(--text-primary); border-radius: 12px; padding: 9px 14px;
+    font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-flex; gap: 6px; align-items: center; }
+  .act.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .act:disabled { opacity: .45; cursor: not-allowed; }
+  .summary { font-size: 18px; line-height: 1.5; margin: 22px 0; padding: 18px 20px; border-left: 3px solid var(--accent); background: var(--surface-2); border-radius: 0 14px 14px 0; }
+  .summary small { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 6px; letter-spacing: .02em; }
+  .facts { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; margin: 18px 0; }
+  .fact { background: var(--surface-2); border-radius: 14px; padding: 12px 14px; }
+  .fact span { display: block; font-size: 12px; color: var(--text-muted); }
+  .fact b { font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
+  .sec { margin-top: 24px; } .sec h3 { font-size: 13px; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 10px; font-weight: 600; }
+  .notes li { margin: 4px 0; color: var(--text-secondary); }
+  audio { width: 100%; margin-top: 4px; }
+  .tx { white-space: pre-wrap; font-size: 14px; line-height: 1.6; color: var(--text-secondary); max-height: 340px; overflow: auto; background: var(--surface-2); border-radius: 14px; padding: 14px 16px; }
+  .tx .ag { color: var(--accent); font-weight: 600; } .tx .us { color: var(--s1); font-weight: 600; }
+  details summary { cursor: pointer; font-weight: 600; }
+  .empty { color: var(--text-muted); text-align: center; padding: 60px 10px; }
+  .toast { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%); background: var(--text-primary); color: var(--bg); padding: 10px 16px; border-radius: 12px; font-size: 14px; z-index: 70; }
+
+  .gate { max-width: 440px; margin: 12vh auto; background: var(--surface-1); border: 1px solid var(--hairline); border-radius: 24px; padding: 30px; }
+  .gate h1 { font-size: 34px; margin: 6px 0 10px; letter-spacing: -.03em; } .gate p { color: var(--text-secondary); }
+  .gate input { width: 100%; box-sizing: border-box; margin: 14px 0; border: 1px solid var(--hairline); background: var(--surface-2); color: var(--text-primary); border-radius: 12px; padding: 12px 14px; font: inherit; }
+  .back { display: none; }
+  @media (max-width: 900px) {
+    .stats { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 8px; margin: 0 -16px 18px; padding: 0 16px; }
+    .stat { flex: 0 0 132px; scroll-snap-align: start; padding: 12px 14px; } .stat b { font-size: 24px; }
+    .ib { padding: 20px 16px 120px; }
+    .grid { grid-template-columns: 1fr; }
+    .list { max-height: none; position: static; }
+    .grid.show-detail .list { display: none; } .grid:not(.show-detail) .detail { display: none; }
+    .back { display: inline-flex; margin-bottom: 14px; }
+    .detail { padding: 20px; }
+  }
+</style>
+</head>
+<body>
+<div class="ib" id="root"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script>
+(() => {
+  const root = document.getElementById("root");
+  const LS = { get: k => { try { return localStorage.getItem(k); } catch { return null; } },
+               set: (k, v) => { try { localStorage.setItem(k, v); } catch {} }, del: k => { try { localStorage.removeItem(k); } catch {} } };
+  let key = new URLSearchParams(location.search).get("key") || LS.get("aangan_key");
+  if (new URLSearchParams(location.search).get("key")) { LS.set("aangan_key", key); history.replaceState(null, "", location.pathname); }
+  let me = LS.get("aangan_me") || "";
+  let data = { items: [], designers: [] }, filter = "all", q = "", sel = null, shownOnce = false;
+
+  const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const LABEL = { booked: "Booked", qualified: "Qualified · not booked", won: "Won", lost: "Lost", client: "Existing client",
+                  nurture: "Nurture", incomplete: "Incomplete", declined: "Declined", dropped: "Dropped / no details" };
+  const FILTERS = [["all", "All"], ["action", "Needs a call"], ["booked", "Booked"], ["client", "Clients"], ["declined", "Declined"]];
+  const needsAction = i => ["qualified", "client", "dropped", "incomplete"].includes(i.status) && !i.claimed_by;
+  const when = iso => { if (!iso) return ""; const d = new Date(iso);
+    return d.toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }); };
+  const dur = s => s ? `${Math.floor(s / 60)}m ${Math.round(s % 60)}s` : null;
+
+  function toast(t) { const d = Object.assign(document.createElement("div"), { className: "toast", textContent: t, role: "status" });
+    document.body.append(d); setTimeout(() => d.remove(), 2600); }
+
+  async function api(path, opts = {}) {
+    const r = await fetch(`/api/inbox${path}`, { ...opts, headers: { "Content-Type": "application/json", "X-Aangan-Secret": key, ...(opts.headers || {}) } });
+    if (r.status === 401) { LS.del("aangan_key"); key = null; gate("That key didn't work. Try again."); throw new Error("401"); }
+    return r.json();
+  }
+
+  function gate(msg) {
+    root.innerHTML = `<form class="gate"><div class="kick">{ Aangan studio }</div><h1>Designer inbox</h1>
+      <p>Every inbound call, with what the receptionist heard. Enter the studio key to open it.</p>
+      <input type="password" autocomplete="current-password" placeholder="Studio key" aria-label="Studio key" required>
+      ${msg ? `<p style="color:#c0392b">${esc(msg)}</p>` : ""}<button class="act primary" type="submit">Open inbox</button></form>`;
+    root.querySelector("form").addEventListener("submit", e => { e.preventDefault(); key = root.querySelector("input").value.trim(); LS.set("aangan_key", key); load(); });
+  }
+
+  function shell() {
+    const opts = ['<option value="">I am…</option>', ...data.designers.map(d => `<option ${d === me ? "selected" : ""}>${esc(d)}</option>`)].join("");
+    root.innerHTML = `
+      <div class="ib-top">
+        <div><div class="kick">{ Inbound calls · Vaani receptionist }</div><h1>Designer <em>inbox.</em></h1></div>
+        <div class="ib-tools">
+          <select class="pill" id="me" aria-label="Your name">${opts}</select>
+          <button class="pill" id="reload" type="button">↻ Refresh</button>
+          <a class="pill" href="index.html">Dashboard</a>
+          <button class="pill" type="button" id="theme">◐</button>
+        </div>
+      </div>
+      <div class="stats" id="stats"></div>
+      <div class="bar" id="bar"></div>
+      <div class="grid" id="grid"><div class="list" id="list" role="list"></div><article class="detail" id="detail"></article></div>`;
+    root.querySelector("#me").addEventListener("change", e => { me = e.target.value; LS.set("aangan_me", me); renderDetail(); });
+    root.querySelector("#reload").addEventListener("click", load);
+    root.querySelector("#theme").addEventListener("click", () => {
+      const cur = document.documentElement.dataset.theme || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+      document.documentElement.dataset.theme = cur === "dark" ? "light" : "dark"; LS.set("aangan_theme", document.documentElement.dataset.theme);
+    });
+  }
+
+  function visible() {
+    const s = q.toLowerCase();
+    return data.items.filter(i => (filter === "all" || (filter === "action" ? needsAction(i) : filter === "declined" ? ["declined", "lost"].includes(i.status) : i.status === filter))
+      && (!s || [i.name, i.phone, i.place, i.project, i.summary].some(v => (v || "").toLowerCase().includes(s))));
+  }
+
+  function renderStats() {
+    const it = data.items, c = st => it.filter(i => i.status === st).length;
+    const cards = [[it.length, "Calls"], [it.filter(needsAction).length, "Need a call back"], [c("booked") + c("won"), "Booked consultations"],
+                   [c("qualified"), "Qualified, not booked"], [c("client"), "Existing clients"]];
+    root.querySelector("#stats").innerHTML = cards.map(([n, l]) => `<div class="stat"><b data-n="${n}">0</b><span>${l}</span></div>`).join("");
+    root.querySelectorAll(".stat b").forEach(b => {
+      const n = +b.dataset.n; if (!window.gsap) { b.textContent = n; return; }
+      const o = { v: 0 }; gsap.to(o, { v: n, duration: .9, ease: "power2.out", onUpdate: () => b.textContent = Math.round(o.v) });
+    });
+  }
+
+  function renderBar() {
+    const count = f => f === "all" ? data.items.length : f === "action" ? data.items.filter(needsAction).length
+      : f === "declined" ? data.items.filter(i => ["declined", "lost"].includes(i.status)).length : data.items.filter(i => i.status === f).length;
+    root.querySelector("#bar").innerHTML = FILTERS.map(([f, l]) => `<button class="chip" type="button" data-f="${f}" aria-pressed="${f === filter}">${l}<span class="n">${count(f)}</span></button>`).join("")
+      + `<input class="search" type="search" placeholder="Search name, number, area…" aria-label="Search calls" value="${esc(q)}">`;
+    root.querySelectorAll(".chip").forEach(b => b.addEventListener("click", () => { filter = b.dataset.f; renderBar(); renderList(); }));
+    root.querySelector(".search").addEventListener("input", e => { q = e.target.value; renderList(); });
+  }
+
+  function renderList(animate) {
+    const list = root.querySelector("#list"), items = visible();
+    if (!items.length) { list.innerHTML = `<p class="empty">No calls here yet.</p>`; return; }
+    list.innerHTML = items.map((i, n) => `<button class="row" type="button" role="listitem" data-k="${n}" aria-current="${sel === i}">
+        <span class="nm">${esc(i.name || i.phone || "Unknown caller")}</span><span class="tm">${when(i.when)}</span>
+        <span class="sub">${esc([i.project, i.place].filter(Boolean).join(" · ") || i.summary || "No details captured")}</span>
+        <span class="tags"><span class="tag st-${i.status}">${LABEL[i.status] || i.status}</span>
+          ${i.claimed_by ? `<span class="tag">✋ ${esc(i.claimed_by)}</span>` : ""}${i.priority ? `<span class="tag t-warn">Priority</span>` : ""}</span></button>`).join("");
+    list.querySelectorAll(".row").forEach(b => b.addEventListener("click", () => { sel = items[+b.dataset.k]; renderList(); renderDetail(true); }));
+    if (animate && window.gsap) gsap.from(list.children, { opacity: 0, y: 8, duration: .3, stagger: .025, ease: "power2.out" });
+  }
+
+  function transcript(t) {
+    return esc(t).replace(/^(\[[^\]]*\]\s*)?(AGENT|ASSISTANT|BOT):/gmi, '$1<span class="ag">Receptionist:</span>')
+                 .replace(/^(\[[^\]]*\]\s*)?(USER|CALLER|CUSTOMER):/gmi, '$1<span class="us">Caller:</span>');
+  }
+
+  function renderDetail(scroll) {
+    const d = root.querySelector("#detail"), grid = root.querySelector("#grid");
+    if (!sel) { d.innerHTML = `<p class="empty">Pick a call on the left to see everything the receptionist captured.</p>`; grid.classList.remove("show-detail"); return; }
+    const i = sel, mine = i.claimed_by && i.claimed_by === me;
+    const tel = i.phone ? `<a class="act" href="tel:${esc(i.phone)}">📞 Call ${esc(i.phone)}</a>` : "";
+    const wa = i.whatsapp ? `<a class="act" href="${esc(i.whatsapp)}" target="_blank" rel="noopener">WhatsApp</a>` : "";
+    const claim = i.id && !i.claimed_by ? `<button class="act primary" type="button" data-claim ${me ? "" : "disabled title='Pick your name at the top first'"}>✋ I'll take this</button>` : "";
+    const stages = i.id && mine ? ["booked", "won", "lost"].map(s => `<button class="act" type="button" data-stage="${s}">${{ booked: "📅 Booked", won: "🏆 Won", lost: "✖ Lost" }[s]}</button>`).join("") : "";
+    d.innerHTML = `
+      <button class="pill back" type="button">← All calls</button>
+      <div class="d-head">
+        <div><span class="tag st-${i.status}">${LABEL[i.status] || i.status}</span>
+          <h2>${esc(i.name || "Unknown caller")}</h2>
+          <div class="meta">${[when(i.when), dur(i.duration_s), i.place].filter(Boolean).map(esc).join(" · ")}</div></div>
+        <div class="acts">${tel}${wa}${claim}${stages}</div>
+      </div>
+      ${i.claimed_by ? `<p class="meta" style="margin-top:12px">✋ Taken by <b>${esc(i.claimed_by)}</b>${i.stage && i.stage !== "claimed" ? ` · stage: <b>${esc(i.stage)}</b>` : ""}</p>` : ""}
+      ${i.booking ? `<div class="summary" style="border-color:var(--s1)"><small>CONSULTATION</small>${esc(new Date(i.booking.start).toLocaleString("en-IN", { weekday: "long", day: "numeric", month: "long", hour: "numeric", minute: "2-digit" }))}</div>` : ""}
+      ${i.summary ? `<div class="summary"><small>WHAT THE CALLER SAID</small>${esc(i.summary)}</div>` : ""}
+      ${i.facts.length ? `<div class="facts">${i.facts.map(f => `<div class="fact"><span>${esc(f.label)}</span><b>${esc(f.value === true ? "Yes" : f.value === false ? "No" : f.value)}</b></div>`).join("")}</div>` : ""}
+      ${i.notes.length || i.asked_price ? `<div class="sec"><h3>Notes for the designer</h3><ul class="notes">${i.asked_price ? "<li>Asked about price (not quoted).</li>" : ""}${i.notes.map(n => `<li>${esc(n)}</li>`).join("")}</ul></div>` : ""}
+      ${i.recording_url ? `<div class="sec"><h3>Recording</h3><audio controls preload="none" src="${esc(i.recording_url)}"></audio></div>` : ""}
+      ${i.transcript ? `<div class="sec"><details><summary>Full transcript</summary><div class="tx">${transcript(i.transcript)}</div></details></div>` : ""}
+      ${!i.summary && !i.facts.length ? `<p class="empty">The caller didn't share details before the call ended.</p>` : ""}`;
+    grid.classList.add("show-detail");
+    d.querySelector(".back").addEventListener("click", () => { sel = null; renderList(); renderDetail(); });
+    d.querySelector("[data-claim]")?.addEventListener("click", async () => {
+      const r = await api(`/${i.id}/claim`, { method: "POST", body: JSON.stringify({ who: me }) }); toast(r.message); await load(i.id);
+    });
+    d.querySelectorAll("[data-stage]").forEach(b => b.addEventListener("click", async () => {
+      const r = await api(`/${i.id}/stage`, { method: "POST", body: JSON.stringify({ who: me, stage: b.dataset.stage }) }); toast(r.message); await load(i.id);
+    }));
+    if (window.gsap) gsap.from(d.children, { opacity: 0, y: 10, duration: .35, stagger: .03, ease: "power2.out" });
+    if (scroll && matchMedia("(max-width: 900px)").matches) scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  async function load(keepId) {
+    if (!key) return gate();
+    try { data = await api(""); } catch (e) { return; }
+    if (!root.querySelector("#grid")) shell();
+    const id = typeof keepId === "number" ? keepId : sel && sel.id;
+    sel = id ? data.items.find(x => x.id === id) || null : sel && data.items.find(x => x.call_id === sel.call_id) || null;
+    renderStats(); renderBar(); renderList(!shownOnce); renderDetail(); shownOnce = true;
+  }
+
+  const t = LS.get("aangan_theme"); if (t) document.documentElement.dataset.theme = t;
+  load();
+  setInterval(() => { if (key && document.visibilityState === "visible") load(); }, 60000);
+})();
+</script>
+<script src="vaani-call.js" defer></script>
+</body>
+</html>

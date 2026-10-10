@@ -9,7 +9,7 @@ import statistics
 from collections import Counter
 from datetime import datetime, time, timedelta
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Request
 
 from .. import clock, db
 from ..settings import settings
@@ -179,11 +179,14 @@ def metrics(start: str | None = Query(None), end: str | None = Query(None)):
 
 
 @router.get("/leads")
-def list_leads(limit: int = 100):
+def list_leads(request: Request, limit: int = 100):
+    """Public dashboard feed. Caller names are reduced to an initial unless the studio key is sent."""
+    from .auth import check_secret
+    full = check_secret(request.query_params.get("key") or request.headers.get("x-aangan-secret"))
     out = []
     for l in db.rows("SELECT * FROM leads ORDER BY id DESC LIMIT ?", limit):
         f = db.unj(l["facts"], {})
-        out.append({"id": l["id"], "created_at": l["created_at"], "name": f.get("caller_name"),
+        out.append({"id": l["id"], "created_at": l["created_at"], "name": f.get("caller_name") if full else ((f.get("caller_name") or "")[:1] + "." if f.get("caller_name") else None),
                     "area": f.get("locality"), "outcome": l["outcome"], "reasons": db.unj(l["reasons"], []),
                     "booked": bool(l["booking_id"]), "claimed_by": l["claimed_by"], "priority": bool(l["priority"])})
     return out
