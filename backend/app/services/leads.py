@@ -6,6 +6,7 @@ from datetime import timedelta
 from pathlib import Path
 
 from .. import clock, db
+from ..rules import overrides
 from ..rules.engine import Facts, evaluate
 from ..settings import ROOT, settings
 from . import callbacks, notify, sheets
@@ -67,6 +68,7 @@ def apply_facts(lead: dict, new_facts: dict) -> dict:
 
 def decide(lead: dict, facts: dict, count_ask: bool = True):
     """Run the engine on the stored facts with the SERVER-SIDE ask counts (the LLM's are ignored)."""
+    overrides.load()
     asked = db.unj(lead["asked"], {})
     d = evaluate(Facts.from_dict({**facts, "asked": asked}), today=clock.now().date())
     if count_ask and d.outcome == "ASK" and d.ask_field:
@@ -82,6 +84,7 @@ def decide(lead: dict, facts: dict, count_ask: bool = True):
 
 def is_qualified_now(lead: dict) -> bool:
     """Booking gate: re-run the engine; never trust a stored outcome column."""
+    overrides.load()
     facts = db.unj(lead["facts"], {})
     d = evaluate(Facts.from_dict({**facts, "asked": db.unj(lead["asked"], {})}), today=clock.now().date())
     return d.outcome == "QUALIFIED"
@@ -160,8 +163,14 @@ def send_handoff(lead_id: int, kind: str, extra: str | None = None) -> str | Non
     audience = "head" if kind == "escalation" else "designers"
     text, plain = handoff_text(lead, kind, extra)
     subject = f"[Aangan] {HEADINGS.get(kind, kind)} · lead #{lead_id}"
+    extra_rows = None
+    if kind in ("qualified_unbooked", "human_requested") and not lead.get("booking_id"):
+        wa = whatsapp_link(lead)
+        if wa:
+            extra_rows = [[{"text": "📲 Send booking link on WhatsApp", "url": wa}]]
+        plain += f"\n\nSelf-booking link for the caller: {booking_link(lead)}"
     channel = notify.deliver(audience, subject, text, plain, ref=f"lead:{lead_id}:{kind}",
-                             claim_lead_id=None if kind == "escalation" else lead_id)
+                             claim_lead_id=None if kind == "escalation" else lead_id, extra_rows=extra_rows)
     if kind != "reminder":
         db.update("leads", lead_id, {"handoff_sent_at": clock.iso(clock.now()) if channel else None,
                                      "handoff_channel": channel or "failed", "handoff_kind": kind})
@@ -169,16 +178,76 @@ def send_handoff(lead_id: int, kind: str, extra: str | None = None) -> str | Non
     return channel
 
 
-def claim(lead_id: int, who: str) -> tuple[bool, str | None]:
+def claim(lead_id: int, who: str, tg_id: str | None = None) -> tuple[bool, str | None]:
     """First tap wins: a single atomic UPDATE. Returns (won, current_owner)."""
     now = clock.iso(clock.now())
-    cur = db.execute("UPDATE leads SET claimed_by=?, claimed_at=? WHERE id=? AND claimed_by IS NULL",
-                     who, now, lead_id)
+    cur = db.execute("UPDATE leads SET claimed_by=?, claimed_at=?, claimed_by_tg=?, stage='claimed', stage_at=? "
+                     "WHERE id=? AND claimed_by IS NULL", who, now, tg_id, now, lead_id)
     owner = db.row("SELECT claimed_by FROM leads WHERE id=?", lead_id)
     won = cur.rowcount == 1
     if won:
         sheets.mirror(lead_id)
     return won, owner["claimed_by"] if owner else None
+
+
+STAGES = ("booked", "won", "lost")
+STAGE_LABEL = {"claimed": "Claimed", "booked": "📅 Consultation booked", "won": "🏆 Won", "lost": "✖ Lost"}
+
+
+def set_stage(lead_id: int, stage: str, who: str, tg_id: str | None = None) -> tuple[bool, str]:
+    """Designer reports what happened after the claim. Only the claimer (by Telegram id, when we
+    know it) may update; anyone else gets a polite refusal."""
+    if stage not in STAGES:
+        return False, "Unknown stage."
+    lead = by_id(lead_id)
+    if not lead or not lead.get("claimed_by"):
+        return False, "Claim the lead first."
+    if lead.get("claimed_by_tg") and tg_id and str(tg_id) != str(lead["claimed_by_tg"]):
+        return False, f"Only {lead['claimed_by']} can update this lead."
+    now = clock.iso(clock.now())
+    db.update("leads", lead_id, {"stage": stage, "stage_at": now, "stage_by": who, "updated_at": now})
+    sheets.mirror(lead_id)
+    return True, STAGE_LABEL[stage]
+
+
+def booking_link(lead: dict) -> str:
+    base = settings.public_base_url.rstrip("/")
+    return f"{base}/book/{lead['id']}?t={notify.sign('book', lead['id'])}"
+
+
+def whatsapp_link(lead: dict) -> str | None:
+    """wa.me deep link with the message pre-filled: one tap for the designer, no WhatsApp API needed."""
+    from urllib.parse import quote
+    phone = "".join(ch for ch in (lead.get("phone") or "") if ch.isdigit())
+    if len(phone) < 10:
+        return None
+    name = db.unj(lead.get("facts"), {}).get("caller_name") or "there"
+    text = (f"Namaste {name}, this is Aangan Studio. Thank you for calling! You can pick a time for your free design "
+            f"consultation here: {booking_link(lead)}")
+    return f"https://wa.me/{phone}?text={quote(text)}"
+
+
+def book_slot(lead: dict, start, source: str) -> tuple[bool, str | int]:
+    """Shared by the voice tool and the self-booking page. Re-checks the rules every time."""
+    from datetime import timedelta
+    from . import calendar
+    if not is_qualified_now(lead):
+        return False, "not_qualified"
+    if lead.get("booking_id"):
+        return False, "already_booked"
+    if not start or not calendar.is_free(start):
+        return False, "slot_unavailable"
+    _, plain = handoff_text(lead, "booked")
+    f = db.unj(lead["facts"], {})
+    event_id = calendar.create_event(start, f"Aangan consultation: {f.get('caller_name') or lead['phone']}", plain)
+    bid = db.insert("bookings", dict(lead_id=lead["id"], slot_start=clock.iso(start),
+                                     slot_end=clock.iso(start + timedelta(minutes=settings.slot_minutes)),
+                                     calendar_event_id=event_id, status="confirmed", created_at=clock.iso(clock.now())))
+    upd = {"booking_id": bid, "updated_at": clock.iso(clock.now())}
+    if source == "self":
+        upd.update(self_booked=1, stage="booked", stage_at=clock.iso(clock.now()), stage_by="caller (self-booked)")
+    db.update("leads", lead["id"], upd)
+    return True, bid
 
 
 def sweep(stale_min: int = 15) -> dict:

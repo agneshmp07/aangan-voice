@@ -88,6 +88,11 @@ class Settings:
     telephony_cost_per_min: float | None = None  # if billed separately
     monthly_fixed_cost: float | None = None      # hosting, number rental, the tool itself
 
+    # ROI estimate: brief's average project value ₹8–14 lakh → midpoint. Shown as an estimate.
+    avg_project_value_inr: float = 1_100_000
+    # Privacy (DPDP Act 2023): transcripts, recordings and raw payloads are purged after this many days
+    retention_days: int = 180
+
     # Handoff
     telegram_bot_token: str | None = None
     telegram_designers_chat_id: str | None = None
@@ -114,7 +119,13 @@ class Settings:
     # VaniAgent (api.vaniagent.com) public docs, read 2026-10-10: webhooks are signed with
     # HMAC-SHA256 hex of the body in X-Vaniagent-Signature; REST base https://api.vaniagent.com/v1
     vaani_webhook_secret: str | None = None
-    vaani_api_base: str = "https://api.vaniagent.com/v1"
+    # Real base per the VaniAgent dashboard + OpenAPI (2026-10-10); auth header is X-API-Key.
+    vaani_api_base: str = "https://api.vaniagent.com/api/developer/v1"
+    vaani_agent_id: str | None = None
+    # Browser voice widget limits (each session costs call minutes)
+    widget_max_session_minutes: int = 5
+    widget_max_daily_sessions: int = 30
+    widget_sessions_per_visitor_hour: int = 3
 
 
 def _abs(p: str) -> str:
@@ -142,6 +153,8 @@ def load() -> Settings:
         platform_cost_per_min=_f("PLATFORM_COST_PER_MIN_INR"),
         telephony_cost_per_min=_f("TELEPHONY_COST_PER_MIN_INR"),
         monthly_fixed_cost=_f("MONTHLY_FIXED_COST_INR"),
+        avg_project_value_inr=_f("AVG_PROJECT_VALUE_INR", 1_100_000),
+        retention_days=int(_f("RETENTION_DAYS", 180)),
         telegram_bot_token=e("TELEGRAM_BOT_TOKEN") or None,
         telegram_designers_chat_id=e("TELEGRAM_DESIGNERS_CHAT_ID") or None,
         telegram_head_chat_id=e("TELEGRAM_HEAD_CHAT_ID") or None,
@@ -161,7 +174,11 @@ def load() -> Settings:
         vaani_outbound_url=e("VAANI_OUTBOUND_URL") or None,
         vaani_api_key=e("VAANI_API_KEY") or None,
         vaani_webhook_secret=e("VAANI_WEBHOOK_SECRET") or None,
-        vaani_api_base=e("VAANI_API_BASE", "https://api.vaniagent.com/v1"),
+        vaani_api_base=e("VAANI_API_BASE", "https://api.vaniagent.com/api/developer/v1"),
+        vaani_agent_id=e("VAANI_AGENT_ID") or None,
+        widget_max_session_minutes=int(_f("WIDGET_MAX_SESSION_MINUTES", 5)),
+        widget_max_daily_sessions=int(_f("WIDGET_MAX_DAILY_SESSIONS", 30)),
+        widget_sessions_per_visitor_hour=int(_f("WIDGET_SESSIONS_PER_VISITOR_HOUR", 3)),
     )
 
 

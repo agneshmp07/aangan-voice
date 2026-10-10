@@ -12,7 +12,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import db
-from .routers import metrics, tools, webhooks
+from .routers import metrics, pages, tools, vaani_widget, webhooks
 from .services import callbacks, leads
 from .settings import ROOT, settings
 
@@ -55,6 +55,8 @@ app = FastAPI(title="Aangan Voice Receptionist", version="1.0", lifespan=lifespa
 app.include_router(tools.router)
 app.include_router(webhooks.router)
 app.include_router(metrics.router)
+app.include_router(vaani_widget.router)
+app.include_router(pages.router)
 
 _dash = ROOT / "dashboard"
 if _dash.exists():

@@ -55,7 +55,7 @@ def _lookup_phone(call_id: str) -> str | None:
         return None
     try:
         r = httpx.get(f"{settings.vaani_api_base.rstrip('/')}/calls/{call_id}", timeout=2.0,
-                      headers={"Authorization": f"Bearer {settings.vaani_api_key}"})
+                      headers={"X-API-Key": settings.vaani_api_key, "Authorization": f"Bearer {settings.vaani_api_key}"})
         r.raise_for_status()
         return payloads.normalise_phone(payloads._walk(r.json(), ("from_number", "caller_number", "from",
                                                                   "customer_number", "caller", "phone_number")))
@@ -156,19 +156,31 @@ async def telegram_update(request: Request, x_telegram_bot_api_secret_token: str
     upd = await request.json()
     cq = upd.get("callback_query") or {}
     data = cq.get("data") or ""
-    if not data.startswith("claim:"):
-        return {"ok": True, "ignored": True}
-    lead_id = int(data.split(":", 1)[1])
-    who = _who(cq.get("from") or {})
-    won, owner = leads.claim(lead_id, who)
+    user = cq.get("from") or {}
+    who, tg_id = _who(user), str(user.get("id") or "") or None
     msg = cq.get("message") or {}
-    original = msg.get("text") or ""
-    if won:
-        notify.answer_claim(cq.get("id", ""), "It's yours. Call them now.", (msg.get("chat") or {}).get("id"),
-                            msg.get("message_id"), html.escape(original) + f"\n\n✅ <b>Claimed by {html.escape(who)}</b>")
-    else:
-        notify.answer_claim(cq.get("id", ""), f"Already taken by {owner}.")
-    return {"ok": True, "won": won, "owner": owner}
+    chat_id, message_id, original = (msg.get("chat") or {}).get("id"), msg.get("message_id"), msg.get("text") or ""
+    if data.startswith("claim:"):
+        lead_id = int(data.split(":", 1)[1])
+        won, owner = leads.claim(lead_id, who, tg_id)
+        if won:
+            notify.answer_claim(cq.get("id", ""), "It's yours. Call them now, then tap what happened.", chat_id,
+                                message_id, html.escape(original) + f"\n\n✅ <b>Claimed by {html.escape(who)}</b>",
+                                markup=notify.STAGE_BUTTONS(lead_id))
+        else:
+            notify.answer_claim(cq.get("id", ""), f"Already taken by {owner}.")
+        return {"ok": True, "won": won, "owner": owner}
+    if data.startswith("stage:"):
+        _, lid, stage = data.split(":", 2)
+        ok, label = leads.set_stage(int(lid), stage, who, tg_id)
+        if ok:
+            keep = notify.STAGE_BUTTONS(int(lid)) if stage == "booked" else None  # won/lost are final
+            notify.answer_claim(cq.get("id", ""), f"Marked: {label}", chat_id, message_id,
+                                html.escape(original) + f"\n{label} · {html.escape(who)}", markup=keep)
+        else:
+            notify.answer_claim(cq.get("id", ""), label)
+        return {"ok": ok, "stage": stage if ok else None}
+    return {"ok": True, "ignored": True}
 
 
 @router.get("/claim/{lead_id}", response_class=HTMLResponse)
@@ -177,15 +189,66 @@ def claim_link(lead_id: int, by: str, t: str):
     if not hmac.compare_digest(t, notify.claim_token(lead_id)):
         raise HTTPException(status_code=403, detail="bad link")
     won, owner = leads.claim(lead_id, by[:60])
-    msg = f"Lead #{lead_id} is yours, {html.escape(by)}. Call them now." if won else \
-        f"Lead #{lead_id} was already taken by {html.escape(owner or '?')}."
+    if won:
+        st = notify.sign("stage", lead_id)
+        links = " · ".join(f"<a href='/stage/{lead_id}?s={s}&by={html.escape(by)}&t={st}'>{label}</a>"
+                           for s, label in (("booked", "Consultation booked"), ("won", "Won"), ("lost", "Lost")))
+        msg = f"Lead #{lead_id} is yours, {html.escape(by)}. Call them now.<p>Afterwards, mark it: {links}</p>"
+    else:
+        msg = f"Lead #{lead_id} was already taken by {html.escape(owner or '?')}."
     return f"<!doctype html><meta name=viewport content='width=device-width'><body style='font:18px system-ui;padding:24px'>{msg}</body>"
+
+
+@router.get("/stage/{lead_id}", response_class=HTMLResponse)
+def stage_link(lead_id: int, s: str, by: str, t: str):
+    """Email fallback for won/lost reporting (signed link)."""
+    if not hmac.compare_digest(t, notify.sign("stage", lead_id)):
+        raise HTTPException(status_code=403, detail="bad link")
+    ok, label = leads.set_stage(lead_id, s, by[:60])
+    return ("<!doctype html><meta name=viewport content='width=device-width'><body style='font:18px system-ui;padding:24px'>"
+            f"{'Saved: ' + label if ok else html.escape(label)}</body>")
 
 
 # ---------------------------------------------------------------- cron
 @router.post("/cron/tick", dependencies=[Depends(require_secret)])
 def cron_tick():
-    return {"callbacks": callbacks.dispatch_due(), "sweep": leads.sweep()}
+    from .pages import purge_old
+    return {"callbacks": callbacks.dispatch_due(), "sweep": leads.sweep(), "purged": purge_old()}
+
+
+def weekly_text(m: dict) -> tuple[str, str]:
+    """Monday note to Nikhil: last 7 days, in plain words. Never a price quote (costs are his own)."""
+    t, c, f, p = m["time_to_claim"], m["cost"], m["funnel"], m.get("pipeline", {})
+    med = t["call_to_claim"]["median_min"]
+    after = t.get("call_to_claim_after_hours", {}).get("median_min")
+    reasons = ", ".join(f"{k.replace('_', ' ')} {v}" for k, v in list(m["decline_reasons"].items())[:3]) or "none"
+    lines = [
+        "<b>Aangan voice desk · last 7 days</b>",
+        f"📞 {f['calls']} calls, {m['after_hours']['share_pct'] or 0}% after hours",
+        f"✅ {f['qualified']} qualified · {f['claimed']} claimed by a designer",
+        f"⏱ Median call → claim: {med if med is not None else '–'} min"
+        + (f" (after-hours calls: {after} min)" if after is not None else ""),
+        f"🏆 {p.get('won', 0)} won · {p.get('booked', 0)} consultations booked · {p.get('lost', 0)} lost",
+        f"🔁 Callbacks done: {m['callbacks'].get('dispatched', 0)} · escalations: {m['escalations']}",
+        f"✖ Not a fit: {reasons}",
+        (f"💸 System cost Rs {c['total']:,.0f} · Rs {c['per_qualified_lead']:,.0f} per qualified lead"
+         if c.get("complete") and c.get("per_qualified_lead") else "💸 Cost: set the per-minute rate to see it"),
+    ]
+    if t.get("unclaimed"):
+        lines.append(f"⚠️ {t['unclaimed']} qualified lead(s) still unclaimed")
+    text = "\n".join(lines)
+    return text, text.replace("<b>", "").replace("</b>", "")
+
+
+@router.post("/cron/weekly", dependencies=[Depends(require_secret)])
+def cron_weekly():
+    from datetime import timedelta
+    from .metrics import compute
+    end = clock.now()
+    m = compute(clock.iso(end - timedelta(days=7)), clock.iso(end))
+    html_text, plain = weekly_text(m)
+    ch = notify.deliver("head", "[Aangan] Weekly summary", html_text, plain, ref=f"weekly:{end:%Y-%m-%d}")
+    return {"ok": bool(ch), "channel": ch}
 
 
 # ---------------------------------------------------------------- VaniAgent "Data Capture Tool" (Mode B)

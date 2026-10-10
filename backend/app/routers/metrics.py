@@ -77,6 +77,11 @@ def compute(start: str | None = None, end: str | None = None) -> dict:
     claimed = [l for l in qualified if l["claimed_at"]]
     reasons = Counter(r for l in leads if l["outcome"] in ("DECLINE", "NURTURE")
                       for r in db.unj(l["reasons"], []))
+    stage = lambda l: l.get("stage")  # noqa: E731
+    p_booked = [l for l in qualified if stage(l) in ("booked", "won") or l["booking_id"]]
+    p_won = [l for l in qualified if stage(l) == "won"]
+    p_lost = [l for l in qualified if stage(l) == "lost"]
+    self_booked = [l for l in qualified if l.get("self_booked")]
     price_askers = [l for l in leads if l["asked_price"]]
     price_booked = [l for l in price_askers if l["booking_id"]]
     price_qualified = [l for l in price_askers if l["outcome"] == "QUALIFIED"]
@@ -135,6 +140,12 @@ def compute(start: str | None = None, end: str | None = None) -> dict:
         "funnel": {"calls": len(calls), "answered": len(answered), "enquiries": len(enquiries),
                    "qualified": len(qualified), "booked": len(booked), "handed_to_designer": len(handed),
                    "claimed": len(claimed)},
+        "pipeline": {"claimed": len(claimed), "booked": len(p_booked), "self_booked": len(self_booked),
+                     "won": len(p_won), "lost": len(p_lost),
+                     "open": len([l for l in claimed if stage(l) in (None, "claimed", "booked")]),
+                     "win_rate_pct": _pct(len(p_won), len(p_won) + len(p_lost)),
+                     "avg_project_value_inr": settings.avg_project_value_inr,
+                     "est_revenue_inr": len(p_won) * settings.avg_project_value_inr},
         "outcomes": dict(outcomes),
         "decline_reasons": dict(reasons.most_common()),
         "escalations": outcomes.get("ESCALATE", 0),
@@ -154,6 +165,8 @@ def compute(start: str | None = None, end: str | None = None) -> dict:
                  "per_call": unit(len(calls)), "per_qualified_lead": unit(len(qualified)),
                  "per_booked_consultation": unit(len(booked)),
                  "per_lead_handed_to_designer": unit(len(handed)), "per_claimed_lead": unit(len(claimed)),
+                 "per_won_project": unit(len(p_won)),
+                 "roi_multiple": round(len(p_won) * settings.avg_project_value_inr / total, 1) if (total and p_won) else None,
                  "note": None if complete else "Set PLATFORM_COST_PER_MIN_INR (or send cost in the call-ended payload) to price every call."},
         "reliability": {"tool_calls": len(tool_events), "failures": dict(fails),
                         "p95_latency_ms": lat[int(0.95 * (len(lat) - 1))] if lat else None},

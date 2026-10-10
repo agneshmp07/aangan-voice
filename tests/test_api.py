@@ -38,6 +38,7 @@ def api(tmp_path, monkeypatch, pg_url):
         with psycopg.connect(pg_url, autocommit=True) as c:
             c.execute("DROP SCHEMA public CASCADE; CREATE SCHEMA public;")
         monkeypatch.setenv("DATABASE_URL", pg_url)
+        db.reset_connections()
     else:
         monkeypatch.delenv("DATABASE_URL", raising=False)
     monkeypatch.setenv("MOCK_MODE", "1")
@@ -75,7 +76,7 @@ def outbox(channel=None, status=None):
         q += " AND channel=?"; a.append(channel)
     if status:
         q += " AND status=?"; a.append(status)
-    return db.rows(q, *a)
+    return db.rows(q + " ORDER BY id", *a)  # Postgres doesn't promise insert order
 
 
 # ---------------------------------------------------------------- happy path

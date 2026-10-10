@@ -50,6 +50,11 @@ DEVANAGARI = {
 }
 
 
+# Filled from the admin page (rules/overrides.py); empty by default.
+EXTRA_IN: list[str] = []
+EXTRA_OUT: list[str] = []
+
+
 def normalise(text: str | None) -> str:
     if not text:
         return ""
@@ -70,8 +75,10 @@ def classify(locality: str | None, city: str | None = None) -> tuple[str, str | 
     if not text:
         return MISSING, None
     # "nanded city" is in Pune; plain "nanded" is a different city. Check longest names first.
-    in_names = sorted(SERVICES_MD_PUNE + SERVICES_MD_PCMC + ADJOINING_IN, key=len, reverse=True)
-    out_names = sorted(SERVICES_MD_EXCLUDED + OTHER_CITIES_OUT, key=len, reverse=True)
+    # An admin exclusion beats the built-in list (e.g. Nikhil stops serving an area).
+    in_names = sorted((n for n in SERVICES_MD_PUNE + SERVICES_MD_PCMC + ADJOINING_IN + EXTRA_IN if n not in EXTRA_OUT),
+                      key=len, reverse=True)
+    out_names = sorted(SERVICES_MD_EXCLUDED + OTHER_CITIES_OUT + EXTRA_OUT, key=len, reverse=True)
     stripped = text
     hit_in = None
     for name in in_names:

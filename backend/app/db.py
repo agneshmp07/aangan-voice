@@ -47,6 +47,9 @@ CREATE TABLE IF NOT EXISTS events (
     id INTEGER PRIMARY KEY AUTOINCREMENT, ts TEXT, type TEXT, call_id TEXT,
     tool TEXT, latency_ms REAL, ok INTEGER, data TEXT
 );
+CREATE TABLE IF NOT EXISTS rule_overrides (
+    key TEXT PRIMARY KEY, value TEXT, updated_at TEXT, updated_by TEXT
+);
 CREATE TABLE IF NOT EXISTS sheet_rows (
     id INTEGER PRIMARY KEY AUTOINCREMENT, lead_id INTEGER UNIQUE, row TEXT, updated_at TEXT
 );
@@ -117,6 +120,13 @@ class _SQLite:
 
 
 _pg_local = threading.local()
+_pg_generation = 0
+
+
+def reset_connections():
+    """Make every thread reconnect on its next query (tests reset the schema between cases)."""
+    global _pg_generation
+    _pg_generation += 1
 
 
 class _Postgres:
@@ -127,10 +137,17 @@ class _Postgres:
         import psycopg
         from psycopg.rows import dict_row
         c = getattr(_pg_local, "conn", None)
+        stale = (getattr(_pg_local, "url", None) != settings.database_url or getattr(_pg_local, "gen", None) != _pg_generation)
+        if c is not None and stale:
+            try:
+                c.close()
+            except Exception:  # noqa: BLE001
+                pass
+            c = None
         if c is None or c.closed:
             c = psycopg.connect(safe_database_url(settings.database_url), autocommit=True, row_factory=dict_row,
                                 prepare_threshold=None, connect_timeout=5)
-            _pg_local.conn = c
+            _pg_local.conn, _pg_local.url, _pg_local.gen = c, settings.database_url, _pg_generation
         self.c = c
 
     @staticmethod
@@ -168,9 +185,35 @@ def conn():
         c.close()
 
 
+# Columns added after the first deploy. migrate() adds whichever are missing, on SQLite or Postgres,
+# so an existing Supabase database upgrades itself on the next cold start.
+ADDED_COLUMNS = {
+    "leads": [("stage", "TEXT"), ("stage_at", "TEXT"), ("stage_by", "TEXT"), ("claimed_by_tg", "TEXT"),
+              ("self_booked", "INTEGER DEFAULT 0")],
+    "calls": [("purged", "INTEGER DEFAULT 0")],
+}
+
+
+def _columns(c, table: str) -> set[str]:
+    if is_postgres():
+        rows = c.execute("SELECT column_name AS name FROM information_schema.columns WHERE table_name=?", (table,)).fetchall()
+    else:
+        rows = c.execute(f"PRAGMA table_info({table})").fetchall()
+    return {r["name"] for r in rows}
+
+
+def migrate(c):
+    for table, cols in ADDED_COLUMNS.items():
+        have = _columns(c, table)
+        for name, typ in cols:
+            if name not in have:
+                c.execute(f"ALTER TABLE {table} ADD COLUMN {name} {typ}")
+
+
 def init():
     with conn() as c:
         c.script(SCHEMA)
+        migrate(c)
 
 
 def row(sql, *args) -> dict | None:
@@ -188,11 +231,14 @@ def execute(sql, *args) -> _Result:
         return c.execute(sql, args)
 
 
+NO_ID_TABLES = {"rule_overrides"}  # keyed by `key`, no serial id
+
+
 def insert(table: str, data: dict) -> int:
     cols = ",".join(data)
     q = ",".join("?" for _ in data)
     sql = f"INSERT INTO {table} ({cols}) VALUES ({q})"
-    if is_postgres() and "id" not in data:
+    if is_postgres() and "id" not in data and table not in NO_ID_TABLES:
         sql += " RETURNING id"
     with conn() as c:
         return c.execute(sql, list(data.values())).lastrowid

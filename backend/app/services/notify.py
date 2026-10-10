@@ -6,6 +6,7 @@ In MOCK_MODE nothing leaves the machine; the outbox row is the "sent" message.
 """
 import hashlib
 import hmac
+import json
 import logging
 import smtplib
 from email.message import EmailMessage
@@ -18,9 +19,20 @@ from ..settings import settings
 log = logging.getLogger("aangan.notify")
 
 
-def claim_token(lead_id: int) -> str:
+def sign(purpose: str, lead_id: int) -> str:
+    """Unguessable per-lead token for links (claim, stage, self-booking)."""
     key = (settings.tool_secret or "aangan-dev-secret").encode()
-    return hmac.new(key, f"claim:{lead_id}".encode(), hashlib.sha256).hexdigest()[:20]
+    return hmac.new(key, f"{purpose}:{lead_id}".encode(), hashlib.sha256).hexdigest()[:20]
+
+
+def claim_token(lead_id: int) -> str:
+    return sign("claim", lead_id)
+
+
+STAGE_BUTTONS = lambda lead_id: {"inline_keyboard": [[  # noqa: E731
+    {"text": "📅 Consultation booked", "callback_data": f"stage:{lead_id}:booked"},
+    {"text": "🏆 Won", "callback_data": f"stage:{lead_id}:won"},
+    {"text": "✖ Lost", "callback_data": f"stage:{lead_id}:lost"}]]}
 
 
 def _record(channel, recipient, subject, body, ref, status, error=None, external_id=None) -> int:
@@ -40,15 +52,18 @@ def _telegram_api(method: str, payload: dict) -> dict:
     return data.get("result") or {}
 
 
-def send_telegram(chat_id: str | None, text: str, ref: str, claim_lead_id: int | None = None) -> bool:
-    markup = None
+def send_telegram(chat_id: str | None, text: str, ref: str, claim_lead_id: int | None = None,
+                  extra_rows: list | None = None) -> bool:
+    rows = []
     if claim_lead_id:
-        markup = {"inline_keyboard": [[{"text": "✋ I'll take this lead", "callback_data": f"claim:{claim_lead_id}"}]]}
+        rows.append([{"text": "✋ I'll take this lead", "callback_data": f"claim:{claim_lead_id}"}])
+    rows += extra_rows or []  # e.g. [{"text": "📲 Send booking link", "url": "https://wa.me/..."}]
+    markup = {"inline_keyboard": rows} if rows else None
     try:
         if settings.mock_mode:
             faults.check("telegram")
-            _record("telegram", chat_id or "mock-chat", None, text, ref, "mock_sent",
-                    external_id=f"mock-{ref}")
+            _record("telegram", chat_id or "mock-chat", json.dumps(markup) if markup else None, text, ref,
+                    "mock_sent", external_id=f"mock-{ref}")
             return True
         if not (settings.telegram_bot_token and chat_id):
             raise RuntimeError("telegram not configured")
@@ -64,16 +79,19 @@ def send_telegram(chat_id: str | None, text: str, ref: str, claim_lead_id: int |
         return False
 
 
-def answer_claim(callback_query_id: str, text: str, chat_id=None, message_id=None, new_text=None):
-    """Tell the tapper whether they won; edit the message so everyone sees who took it."""
+def answer_claim(callback_query_id: str, text: str, chat_id=None, message_id=None, new_text=None, markup=None):
+    """Tell the tapper what happened; edit the message so everyone sees it (and swap the buttons)."""
     if settings.mock_mode or not settings.telegram_bot_token:
-        _record("telegram", str(chat_id or "mock-chat"), "claim-answer", text, f"cbq:{callback_query_id}", "mock_sent")
+        _record("telegram", str(chat_id or "mock-chat"), "claim-answer", text + ((chr(10) + new_text) if new_text else ""),
+                f"cbq:{callback_query_id}", "mock_sent", external_id=json.dumps(markup) if markup else None)
         return
     try:
         _telegram_api("answerCallbackQuery", {"callback_query_id": callback_query_id, "text": text})
         if new_text and chat_id and message_id:
-            _telegram_api("editMessageText", {"chat_id": chat_id, "message_id": message_id,
-                                              "text": new_text, "parse_mode": "HTML"})
+            body = {"chat_id": chat_id, "message_id": message_id, "text": new_text, "parse_mode": "HTML",
+                    "disable_web_page_preview": True}
+            body["reply_markup"] = markup or {"inline_keyboard": []}
+            _telegram_api("editMessageText", body)
     except Exception as e:  # noqa: BLE001
         log.warning("telegram answer failed: %s", e)
 
@@ -106,11 +124,11 @@ def send_email(to: str | None, subject: str, body: str, ref: str) -> bool:
 
 # ---------------------------------------------------------------- routing
 def deliver(audience: str, subject: str, text_html: str, text_plain: str, ref: str,
-            claim_lead_id: int | None = None) -> str | None:
+            claim_lead_id: int | None = None, extra_rows: list | None = None) -> str | None:
     """audience: 'designers' or 'head'. Returns the channel that succeeded, or None."""
     chat = settings.telegram_designers_chat_id if audience == "designers" else settings.telegram_head_chat_id
     to = settings.designers_email if audience == "designers" else settings.head_email
-    if send_telegram(chat, text_html, ref, claim_lead_id):
+    if send_telegram(chat, text_html, ref, claim_lead_id, extra_rows):
         return "telegram"
     body = text_plain
     if claim_lead_id:
