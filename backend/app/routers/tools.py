@@ -57,6 +57,10 @@ async def evaluate_enquiry(request: Request, background: BackgroundTasks):
 
 # ---------------------------------------------------------------- get_consultation_slots
 def _slots(norm, later):
+    # Vaani's plan allows only 4 custom tools, so this one also books: with a real slot_id it books, without it lists.
+    slot = str((norm["args"] or {}).get("slot_id") or "").strip()
+    if slot and slot.lower() not in ("null", "none", "undefined") and not slot.startswith("{"):
+        return _book(norm, later)
     lead = leads.get_or_create(norm["_call_id"], norm["phone"])
     lang = _lang(norm, lead)
     if not leads.is_qualified_now(lead):
@@ -68,7 +72,7 @@ def _slots(norm, later):
     labels = [s["label"] for s in slots]
     joined = ", ".join(labels[:-1]) + (" or " if len(labels) > 1 else "") + labels[-1]
     return {"ok": True, "slots": slots, "say": line("booking.slots", lang, slots=joined),
-            "next_tools": ["book_consultation"]}
+            "next_tools": ["get_consultation_slots with slot_id"]}
 
 
 @router.post("/get_consultation_slots")

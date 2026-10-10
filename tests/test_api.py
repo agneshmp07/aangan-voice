@@ -583,3 +583,20 @@ def test_session_ref_keeps_concurrent_callers_apart(api):
     assert db.row("SELECT call_id FROM leads WHERE id=?", unfilled["lead_id"])["call_id"] == "vref-QQ1"
     shape = db.row("SELECT data FROM events WHERE type='tool_shape' ORDER BY id LIMIT 1")["data"]
     assert "session_ref" in shape and "X-Aangan-Secret".lower() not in shape.lower()
+
+
+def test_slots_tool_books_when_given_a_slot_id(api):
+    """Vaani allows 4 custom tools, so get_consultation_slots doubles as the booking tool."""
+    qualify(api)
+    s = tool(api, "get_consultation_slots", slot_id="")  # Vaani sends required params empty: just list
+    assert s["ok"] and len(s["slots"]) == 3
+    b = tool(api, "get_consultation_slots", slot_id=s["slots"][0]["slot_id"])
+    assert b["ok"] and b["say"].startswith("You're booked for Monday 12 October at 3 pm")
+    assert db.row("SELECT COUNT(*) n FROM bookings")["n"] == 1
+
+
+def test_slots_tool_still_rejects_unqualified_booking(api):
+    tool(api, "evaluate_enquiry", facts={})
+    r = tool(api, "get_consultation_slots", slot_id="2026-10-12T15:00:00+05:30")
+    assert r["ok"] is False and r["error"] == "not_qualified"
+    assert db.row("SELECT COUNT(*) n FROM bookings")["n"] == 0
