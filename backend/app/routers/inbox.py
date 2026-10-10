@@ -13,7 +13,13 @@ from ..services import leads
 from ..settings import settings
 from .auth import require_secret
 
-router = APIRouter(prefix="/api/inbox", tags=["designer inbox"], dependencies=[Depends(require_secret)])
+def _configured():
+    """Fail closed: caller data is never served when the studio key isn't configured."""
+    if not settings.tool_secret:
+        raise HTTPException(503, "Inbox is locked: TOOL_SECRET is not configured on the server.")
+
+
+router = APIRouter(prefix="/api/inbox", tags=["designer inbox"], dependencies=[Depends(_configured), Depends(require_secret)])
 
 FACT_LABELS = [
     ("project_category", "Project"), ("scope", "Scope"), ("bhk", "BHK"), ("carpet_area_sqft", "Carpet area (sq ft)"),
