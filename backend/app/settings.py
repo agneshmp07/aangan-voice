@@ -5,6 +5,7 @@ tool timeout) is a setting, never a hard-coded guess. Costs default to None = "u
 and the metrics API reports them as unknown, not as zero.
 """
 import os
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -12,7 +13,8 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 # A whole .env pasted into ONE hosting variable (Vercel's form sometimes saves it that way).
-ENV_BLOB_VARS = ("AANGAN_ENV_FILE", "vercel_env")
+# Vercel: the whole .env pasted into ONE variable. Any of these names works (people rename it).
+ENV_BLOB_VARS = ("AANGAN_ENV_FILE", "vercel_env", "VERCEL_ENV_FILE", "AANGAN_ENV", "VAANI_KEY")
 
 
 def _apply_env_text(text: str):
@@ -28,8 +30,10 @@ def _apply_env_text(text: str):
 def _load_dotenv():
     for name in ENV_BLOB_VARS:
         blob = os.environ.get(name)
-        if blob and "=" in blob:
+        if blob and re.search(r"^\s*[A-Z][A-Z0-9_]*=", blob, re.M):
             _apply_env_text(blob)
+        elif blob and name == "VAANI_KEY":  # just the Vaani key on its own
+            os.environ.setdefault("VAANI_API_KEY", blob.strip())
     if os.environ.get("AANGAN_NO_DOTENV") == "1":  # tests: never read real keys
         return
     p = ROOT / ".env"

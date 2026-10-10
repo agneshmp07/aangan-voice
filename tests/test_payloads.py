@@ -1,5 +1,7 @@
 """The webhook/tool parser must accept the payload shapes common voice platforms use,
 because Vaani's exact shape is not documented to us."""
+import os
+
 from app.payloads import normalise_call_end, normalise_phone, normalise_tool_call
 
 FACTS = {"locality": "Baner", "scope": "full_home"}
@@ -45,3 +47,17 @@ def test_call_end_shapes():
     c = normalise_call_end({"event": "call_ended", "data": {"conversation_id": "z", "status": "no-answer",
                                                              "caller": "9820000003"}})
     assert c["call_id"] == "z" and c["missed"] is True
+
+
+def test_env_blob_accepted_under_vaani_key_name(monkeypatch):
+    """Vercel: the user pasted the whole .env into a variable named VAANI_KEY (2026-10-10)."""
+    from app import settings as m
+    for k in ("DATABASE_URL", "VAANI_API_KEY", "MOCK_MODE", "vercel_env"):
+        monkeypatch.delenv(k, raising=False)
+    monkeypatch.setenv("VAANI_KEY", "DATABASE_URL=postgres://u:p@h/db\nVAANI_API_KEY=abc123\nMOCK_MODE=0")
+    m._load_dotenv()
+    assert os.environ["DATABASE_URL"].startswith("postgres://") and os.environ["VAANI_API_KEY"] == "abc123"
+    monkeypatch.delenv("VAANI_API_KEY")
+    monkeypatch.setenv("VAANI_KEY", "plainkey_123")
+    m._load_dotenv()
+    assert os.environ["VAANI_API_KEY"] == "plainkey_123"
