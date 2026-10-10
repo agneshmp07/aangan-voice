@@ -570,3 +570,16 @@ def test_capture_yes_no_strings_become_real_booleans(api):
     assert facts["asked_price"] is False and facts["is_decision_maker"] is False
     body = outbox("telegram")[0]["body"]
     assert "Asked about price" not in body and "represented (owners attend)" in body
+
+
+def test_session_ref_keeps_concurrent_callers_apart(api):
+    a = api.post("/tools/evaluate_enquiry", json={"session_ref": "AG7K2", "locality": "Kothrud", "scope": "full_home"}).json()
+    b = api.post("/tools/evaluate_enquiry", json={"session_ref": "ZZ91Q", "locality": "Nashik", "scope": "full_home"}).json()
+    assert a["lead_id"] != b["lead_id"] and b["outcome"] == "DECLINE"
+    a2 = api.post("/tools/evaluate_enquiry", json={"session_ref": "AG7K2", "deadline_text": "by March",
+                                                   "is_decision_maker": "yes"}).json()
+    assert a2["lead_id"] == a["lead_id"] and a2["outcome"] == "QUALIFIED"  # facts accumulated across tool calls
+    unfilled = api.post("/tools/evaluate_enquiry", json={"call_id": "{room_name}", "session_ref": "QQ1"}).json()
+    assert db.row("SELECT call_id FROM leads WHERE id=?", unfilled["lead_id"])["call_id"] == "vref-QQ1"
+    shape = db.row("SELECT data FROM events WHERE type='tool_shape' ORDER BY id LIMIT 1")["data"]
+    assert "session_ref" in shape and "X-Aangan-Secret".lower() not in shape.lower()

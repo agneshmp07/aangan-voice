@@ -24,9 +24,20 @@ log = logging.getLogger("aangan.guard")
 META_KEYS = {"call_id", "caller_phone", "language", "facts", "toolCallId", "tool_call_id"}
 
 
+def _real(v) -> str | None:
+    """Ignore empty values and un-substituted platform placeholders like '{room_name}' or '{{call_id}}'."""
+    v = str(v or "").strip()
+    return None if (not v or v.startswith("{") or v.lower() in ("null", "none", "undefined")) else v
+
+
 def call_id_for(norm: dict) -> str:
-    if norm["call_id"]:
+    if _real(norm["call_id"]):
         return norm["call_id"]
+    # Vaani custom tools: the agent invents one short code per call and repeats it on every tool call,
+    # so facts from different callers never mix even if the platform doesn't send a call id.
+    ref = _real((norm["args"] or {}).get("session_ref"))
+    if ref:
+        return f"vref-{ref[:40]}"
     # Platform didn't send a call id: one pseudo-call per number per hour.
     return f"anon-{norm['phone'] or 'unknown'}-{clock.now():%Y%m%d%H}"
 
@@ -62,6 +73,7 @@ async def run_tool(tool: str, request: Request, background: BackgroundTasks, fn)
         body = {}
     norm = payloads.normalise_tool_call(body)
     norm["_call_id"] = call_id_for(norm)
+    _log_request_shape(tool, request, body)
     later: list = []
     try:
         result = await asyncio.wait_for(asyncio.to_thread(fn, norm, later), timeout=settings.tool_timeout_s)
@@ -82,6 +94,25 @@ async def run_tool(tool: str, request: Request, background: BackgroundTasks, fn)
         ts=clock.iso(clock.now()), type="tool", call_id=norm["_call_id"], tool=tool,
         latency_ms=round(latency, 1), ok=int(ok), data=result.get("error") or result.get("outcome"))))
     return JSONResponse(payloads.tool_response(result, norm["tool_call_id"]))
+
+
+SECRET_HEADERS = {"x-aangan-secret", "authorization", "cookie", "x-api-key"}
+
+
+def _log_request_shape(tool: str, request: Request, body: dict):
+    """Keep the shape (header names + argument names, no secrets, no values) of what the voice platform
+    sends, so the call-id linking can be verified on the first real call. Best effort, never blocks."""
+    try:
+        if db.row("SELECT COUNT(*) AS n FROM events WHERE type='tool_shape'")["n"] >= 50:
+            return
+        shape = {"tool": tool, "headers": sorted(h for h in request.headers.keys() if h.lower() not in SECRET_HEADERS),
+                 "query": sorted(request.query_params.keys()),
+                 "body_keys": sorted(body.keys()) if isinstance(body, dict) else type(body).__name__,
+                 "platform_ids": {k: request.headers.get(k) for k in request.headers.keys()
+                                  if any(t in k.lower() for t in ("call", "room", "session", "agent", "conversation"))}}
+        db.insert("events", {"ts": clock.iso(clock.now()), "type": "tool_shape", "tool": tool, "data": json.dumps(shape)[:1500]})
+    except Exception:  # noqa: BLE001
+        pass
 
 
 def _safe(job):

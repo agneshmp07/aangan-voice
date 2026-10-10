@@ -79,6 +79,8 @@ class Facts:
                 v = _to_bool(v)
             elif "int" in t:
                 v = _to_int(v)
+                if v is not None and v <= 0:  # voice platforms send 0 for "not said yet"; no real area/BHK/budget is 0
+                    v = None
             elif k2 == "asked":
                 v = {str(a): _to_int(b) or 0 for a, b in dict(v).items()} if isinstance(v, dict) else {}
             elif "str" in t:
