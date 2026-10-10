@@ -43,11 +43,13 @@ def mirror(lead_id: int):
 
 
 def _push_google(values: list, row_ref: str | None) -> str:
-    from google.oauth2 import service_account
+    import google_auth_httplib2
+    import httplib2
     from googleapiclient.discovery import build
-    creds = service_account.Credentials.from_service_account_file(
-        settings.google_service_account_file, scopes=["https://www.googleapis.com/auth/spreadsheets"])
-    api = build("sheets", "v4", credentials=creds, cache_discovery=False).spreadsheets().values()
+    from .calendar import google_credentials
+    creds = google_credentials(["https://www.googleapis.com/auth/spreadsheets"])
+    http = google_auth_httplib2.AuthorizedHttp(creds, http=httplib2.Http(timeout=6))
+    api = build("sheets", "v4", http=http, cache_discovery=False).spreadsheets().values()
     body = {"values": [[("" if v is None else v) for v in values]]}
     if row_ref and row_ref.isdigit():
         api.update(spreadsheetId=settings.google_sheet_id, range=f"Leads!A{row_ref}",

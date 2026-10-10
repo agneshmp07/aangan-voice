@@ -212,8 +212,10 @@ def stage_link(lead_id: int, s: str, by: str, t: str):
 # ---------------------------------------------------------------- cron
 @router.post("/cron/tick", dependencies=[Depends(require_secret)])
 def cron_tick():
+    from ..services import hubspot
     from .pages import purge_old
-    return {"callbacks": callbacks.dispatch_due(), "sweep": leads.sweep(), "purged": purge_old()}
+    return {"callbacks": callbacks.dispatch_due(), "sweep": leads.sweep(), "purged": purge_old(),
+            "hubspot_retried": hubspot.retry_unsynced()}
 
 
 def weekly_text(m: dict) -> tuple[str, str]:
@@ -320,6 +322,9 @@ def process_capture(body: dict) -> dict:
                              priority=wants_human or d.priority, note=note)
         actions.append(f"callback:{cb['due_at'] if cb else 'skipped'}")
     sheets.mirror(lead["id"])
+    from ..services import hubspot
+    if hubspot.enabled():
+        actions.append("hubspot:" + ("ok" if "error" not in hubspot.sync_lead(lead["id"]) else "failed"))
     return {"ok": True, "lead_id": lead["id"], "outcome": d.outcome, "actions": actions}
 
 

@@ -189,7 +189,8 @@ def conn():
 # so an existing Supabase database upgrades itself on the next cold start.
 ADDED_COLUMNS = {
     "leads": [("stage", "TEXT"), ("stage_at", "TEXT"), ("stage_by", "TEXT"), ("claimed_by_tg", "TEXT"),
-              ("self_booked", "INTEGER DEFAULT 0")],
+              ("self_booked", "INTEGER DEFAULT 0"), ("hubspot_contact_id", "TEXT"), ("hubspot_deal_id", "TEXT"),
+              ("hubspot_synced_at", "TEXT")],
     "calls": [("purged", "INTEGER DEFAULT 0")],
 }
 

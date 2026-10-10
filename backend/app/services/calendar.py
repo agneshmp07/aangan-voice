@@ -40,12 +40,27 @@ def _busy_mock(lo: datetime, hi: datetime) -> list[tuple[datetime, datetime]]:
     return [(clock.parse(r["slot_start"]), clock.parse(r["slot_end"])) for r in rs]
 
 
-def _google():
+def google_credentials(scopes: list[str]):
+    """Service-account key from GOOGLE_SERVICE_ACCOUNT_JSON (Vercel: paste the file's contents) or a file path."""
+    import json as _json
     from google.oauth2 import service_account  # lazy: only needed outside mock mode
+    if settings.google_service_account_json:
+        return service_account.Credentials.from_service_account_info(_json.loads(settings.google_service_account_json), scopes=scopes)
+    return service_account.Credentials.from_service_account_file(settings.google_service_account_file, scopes=scopes)
+
+
+def google_enabled() -> bool:
+    return bool(settings.google_calendar_id and (settings.google_service_account_json or settings.google_service_account_file))
+
+
+def _google():
+    import google_auth_httplib2
+    import httplib2
     from googleapiclient.discovery import build
-    creds = service_account.Credentials.from_service_account_file(
-        settings.google_service_account_file, scopes=["https://www.googleapis.com/auth/calendar"])
-    return build("calendar", "v3", credentials=creds, cache_discovery=False)
+    creds = google_credentials(["https://www.googleapis.com/auth/calendar"])
+    # Hard timeout: a slow Google must not hold a call (the guard's deadline is 2.5 s).
+    http = google_auth_httplib2.AuthorizedHttp(creds, http=httplib2.Http(timeout=4))
+    return build("calendar", "v3", http=http, cache_discovery=False)
 
 
 def _busy_google(lo: datetime, hi: datetime):
@@ -58,7 +73,7 @@ def _busy_google(lo: datetime, hi: datetime):
 
 def _busy(lo, hi):
     faults.check("calendar")
-    if settings.mock_mode or not settings.google_calendar_id:
+    if settings.mock_mode or not google_enabled():
         return _busy_mock(lo, hi)
     return _busy_google(lo, hi) + _busy_mock(lo, hi)
 
@@ -82,12 +97,15 @@ def is_free(start: datetime) -> bool:
     return any(clock.parse(s["start"]) == start for s in free_slots(limit=60))
 
 
-def create_event(start: datetime, summary: str, description: str) -> str:
+def create_event(start: datetime, summary: str, description: str, lead_id: int | None = None) -> str:
     faults.check("calendar")
-    if settings.mock_mode or not settings.google_calendar_id:
+    if settings.mock_mode or not google_enabled():
         return f"mock-event-{int(start.timestamp())}"
     ev = _google().events().insert(calendarId=settings.google_calendar_id, body={
-        "summary": summary, "description": description,
+        "summary": summary, "description": description, "colorId": "6",
+        "location": "Aangan Studio, Pune (or site visit: see notes)",
+        "reminders": {"useDefault": False, "overrides": [{"method": "popup", "minutes": 60}]},
+        "extendedProperties": {"private": {"aangan_lead_id": str(lead_id or "")}},
         "start": {"dateTime": start.isoformat(), "timeZone": "Asia/Kolkata"},
         "end": {"dateTime": (start + timedelta(minutes=settings.slot_minutes)).isoformat(), "timeZone": "Asia/Kolkata"},
     }).execute()

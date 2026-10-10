@@ -207,7 +207,14 @@ def set_stage(lead_id: int, stage: str, who: str, tg_id: str | None = None) -> t
     now = clock.iso(clock.now())
     db.update("leads", lead_id, {"stage": stage, "stage_at": now, "stage_by": who, "updated_at": now})
     sheets.mirror(lead_id)
+    _crm(lead_id)
     return True, STAGE_LABEL[stage]
+
+
+def _crm(lead_id: int):
+    from . import hubspot
+    if hubspot.enabled():
+        hubspot.sync_lead(lead_id)
 
 
 def booking_link(lead: dict) -> str:
@@ -239,7 +246,8 @@ def book_slot(lead: dict, start, source: str) -> tuple[bool, str | int]:
         return False, "slot_unavailable"
     _, plain = handoff_text(lead, "booked")
     f = db.unj(lead["facts"], {})
-    event_id = calendar.create_event(start, f"Aangan consultation: {f.get('caller_name') or lead['phone']}", plain)
+    event_id = calendar.create_event(start, f"Aangan consultation: {f.get('caller_name') or lead['phone']}", plain,
+                                     lead_id=lead["id"])
     bid = db.insert("bookings", dict(lead_id=lead["id"], slot_start=clock.iso(start),
                                      slot_end=clock.iso(start + timedelta(minutes=settings.slot_minutes)),
                                      calendar_event_id=event_id, status="confirmed", created_at=clock.iso(clock.now())))
@@ -247,6 +255,7 @@ def book_slot(lead: dict, start, source: str) -> tuple[bool, str | int]:
     if source == "self":
         upd.update(self_booked=1, stage="booked", stage_at=clock.iso(clock.now()), stage_by="caller (self-booked)")
     db.update("leads", lead["id"], upd)
+    _crm(lead["id"])
     return True, bid
 
 

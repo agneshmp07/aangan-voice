@@ -109,6 +109,14 @@ class Settings:
 
     # Google
     google_service_account_file: str | None = None
+    google_service_account_json: str | None = None   # the key file's contents (for Vercel, which has no files)
+    # HubSpot CRM (private app token). Stage ids are per-portal: defaults are HubSpot's default sales pipeline.
+    hubspot_token: str | None = None
+    hubspot_pipeline: str = "default"
+    hubspot_stage_qualified: str = "qualifiedtobuy"
+    hubspot_stage_booked: str = "presentationscheduled"
+    hubspot_stage_won: str = "closedwon"
+    hubspot_stage_lost: str = "closedlost"
     google_calendar_id: str | None = None
     google_sheet_id: str | None = None
 
@@ -168,6 +176,13 @@ def load() -> Settings:
         head_email=e("HEAD_EMAIL") or None,
         designers=_list("DESIGNERS", "Designer A,Designer B,Designer C"),
         google_service_account_file=e("GOOGLE_SERVICE_ACCOUNT_FILE") or None,
+        google_service_account_json=e("GOOGLE_SERVICE_ACCOUNT_JSON") or None,
+        hubspot_token=e("HUBSPOT_TOKEN") or None,
+        hubspot_pipeline=e("HUBSPOT_PIPELINE", "default"),
+        hubspot_stage_qualified=e("HUBSPOT_STAGE_QUALIFIED", "qualifiedtobuy"),
+        hubspot_stage_booked=e("HUBSPOT_STAGE_BOOKED", "presentationscheduled"),
+        hubspot_stage_won=e("HUBSPOT_STAGE_WON", "closedwon"),
+        hubspot_stage_lost=e("HUBSPOT_STAGE_LOST", "closedlost"),
         google_calendar_id=e("GOOGLE_CALENDAR_ID") or None,
         google_sheet_id=e("GOOGLE_SHEET_ID") or None,
         callback_mode=e("CALLBACK_MODE", "human"),
