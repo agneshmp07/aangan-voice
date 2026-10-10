@@ -64,3 +64,10 @@ def test_prompt_quotes_the_exact_price_deflection():
     from app.rules.lines import LINES
     prompt = (AGENT / "system_prompt.md").read_text(encoding="utf8")
     assert LINES["price.deflect"]["en"].replace("; your", ". Your") in prompt
+
+
+def test_requirements_cover_runtime_imports():
+    """A package installed locally but missing from requirements.txt took production down once (python-multipart)."""
+    req = (ROOT / "requirements.txt").read_text(encoding="utf8").lower()
+    for pkg in ("fastapi", "httpx", "psycopg", "python-multipart", "google-api-python-client", "google-auth-httplib2", "httplib2"):
+        assert pkg in req, f"{pkg} missing from requirements.txt"
