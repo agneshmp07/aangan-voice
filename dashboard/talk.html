@@ -103,7 +103,7 @@
     <a class="t-brand" href="talk.html">
       <svg class="brand-mark" viewBox="0 0 44 44" aria-hidden="true"><rect width="44" height="44" rx="11" fill="var(--accent)"/>
         <rect x="14" y="14" width="16" height="16" rx="3" fill="var(--surface-1)"/><circle cx="22" cy="22" r="3" fill="var(--s4)"/></svg>
-      <span><b>Aangan Studio</b><small>Interior design · Pune &amp; PCMC</small></span>
+      <span><b>Aangan Studio</b><small>Interior design · Pune · projects across India</small></span>
     </a>
     <div class="controls">
       <a class="icon-btn" href="index.html" style="text-decoration:none">Studio dashboard</a>
@@ -145,7 +145,7 @@
       <div class="status2" id="status" role="status">Checking the line…</div>
       <div class="captions" id="captions" aria-live="polite" aria-label="Live captions"></div>
       <button class="end" id="end" type="button">End call</button>
-      <div class="phone2">Prefer the phone? Call <a href="tel:+917965250813">+91 79652 50813</a></div>
+      <div class="phone2" id="phone2" hidden>Prefer the phone? Call <a id="phoneLink" href="#"></a></div>
     </div>
   </section>
 </div>
@@ -207,10 +207,16 @@
 
   fetch("/api/vaani/status").then(r => r.json()).then(s => {
     enabled = !!s.enabled;
+    if (s.phone) {
+      const a = document.getElementById("phoneLink");
+      a.textContent = s.phone; a.href = "tel:" + s.phone.replace(/[^+\d]/g, "");
+      document.getElementById("phone2").hidden = false;
+    }
     say(enabled ? `Tick the box, then press Start. Calls last up to ${s.max_minutes} minutes.`
-                : "Online calling is being switched on. Meanwhile, call the number below.");
+                : (s.phone ? "Online calling is being switched on. Meanwhile, call the number below."
+                           : "Online calling is being switched on. Please check back shortly."));
     refresh();
-  }).catch(() => say("Couldn't reach the line. Please call the number below.", true));
+  }).catch(() => say("Couldn't reach the line. Please try again in a moment.", true));
   consent.addEventListener("change", refresh);
 
   // ---- live captions (LiveKit transcription events from the Vaani agent) ----

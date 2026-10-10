@@ -22,12 +22,12 @@
 - Furniture sourcing on its own, without a design project.
 - Standalone Vastu consultations.
 - Restaurants, hotels, retail shops and gyms.
-- Projects outside Pune city and Pimpri-Chinchwad.
+- Projects outside India.
 
 ## Where we work
-- **Pune city**, including Kothrud, Baner, Aundh, Wakad, Koregaon Park, Kalyani Nagar, Viman Nagar, Hadapsar, Magarpatta, NIBM, Kondhwa, Undri, Shivane, Warje, Erandwane, Deccan and nearby areas.
-- **Pimpri-Chinchwad (PCMC)**, including Pimpri, Chinchwad, Pimple Saudagar, Pimple Nilakh, Ravet and Hinjewadi.
-- Not currently: Talegaon, Lonavala, Nashik, Mumbai or other cities. (The receptionist never decides this itself; the evaluate tool does.)
+- **Anywhere in India.** The studio is based in Pune, and most projects are in Pune city and Pimpri-Chinchwad (Kothrud, Baner, Aundh, Wakad, Koregaon Park, Viman Nagar, Hadapsar, Hinjewadi, Pimple Saudagar and nearby areas).
+- Projects in other Indian cities are welcome; the designer confirms travel and site-visit arrangements at the consultation.
+- Not outside India. (The receptionist never decides this itself; the evaluate tool does.)
 
 ## How a project runs
 - **Consultation:** free and with no obligation. A designer goes through your space, your needs and the costs in detail. It can be at the studio or a site visit.

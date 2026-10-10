@@ -162,7 +162,21 @@ def _c1_real_project(f: Facts, notes: list) -> tuple[str, str | None]:
     return UNCLEAR, "scope"
 
 
+def _c2_india(f: Facts, notes: list) -> tuple[str, str | None]:
+    place = " ".join(p for p in (f.locality, f.city) if p).strip()
+    if not place:
+        return UNCLEAR, "area_india"
+    low = place.lower()
+    if any(re.search(rf"(?<!\w){re.escape(m)}(?!\w)", low) for m in C.OUTSIDE_INDIA):
+        return FAIL, "decline.area_india"
+    if areas.classify(f.locality, f.city)[0] != areas.IN:
+        notes.append(f"Site outside Pune/PCMC ({place}): confirm travel and site-visit logistics.")
+    return PASS, None
+
+
 def _c2_area(f: Facts, notes: list) -> tuple[str, str | None]:
+    if C.SERVICE_AREA == "india":
+        return _c2_india(f, notes)
     status, name = areas.classify(f.locality, f.city)
     if status == areas.IN:
         return PASS, None
@@ -232,12 +246,12 @@ def _c5_decision_maker(f: Facts, notes: list) -> str:
 
 
 ASK_KEY = {
-    "scope": "ask.scope", "area": "ask.area", "area_unknown": "ask.area_unknown",
+    "scope": "ask.scope", "area": "ask.area", "area_unknown": "ask.area_unknown", "area_india": "ask.area_india",
     "deadline": "ask.deadline", "deadline_exact": "ask.deadline_exact",
     "deadline_flexible": "ask.deadline_flexible",
 }
 # A repeat of the same underlying question counts against the same budget of two asks.
-ASK_BUCKET = {"area_unknown": "area", "deadline_exact": "deadline"}
+ASK_BUCKET = {"area_unknown": "area", "area_india": "area", "deadline_exact": "deadline"}
 
 
 # --------------------------------------------------------------------------- evaluate

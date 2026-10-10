@@ -3,6 +3,7 @@
 Anything marked CONFIRM is a judgement call made where the seed files contradict
 each other (see docs/00_checkpoint1_analysis.md) and should be signed off by Nikhil.
 """
+import os
 
 # --- Criterion 3: realistic timeline -------------------------------------------------
 # qualified.md: "The site must be available for execution within 8–10 weeks of the
@@ -53,3 +54,16 @@ BUDGET_CLEARLY_BELOW_RATIO = 0.5
 
 # --- Guardrails -------------------------------------------------------------------------
 MAX_ASKS_PER_FIELD = 2           # ask the same question at most twice, then flag for designer
+
+
+# --- Criterion 2: service area ------------------------------------------------------------
+# services.md limits work to Pune city + PCMC. Owner decision (2026-10-10): take projects anywhere
+# in India; sites outside Pune/PCMC are noted for the designer (travel, site-visit logistics).
+# SERVICE_AREA=pune restores the original rubric.
+SERVICE_AREA = os.environ.get("SERVICE_AREA", "india").strip().lower()
+OUTSIDE_INDIA = [
+    "dubai", "abu dhabi", "uae", "sharjah", "qatar", "doha", "saudi", "riyadh", "oman", "muscat", "kuwait", "bahrain",
+    "usa", "united states", "america", "canada", "uk", "united kingdom", "london", "england", "australia",
+    "singapore", "malaysia", "nepal", "sri lanka", "bangladesh", "pakistan", "germany", "france", "new zealand",
+    "दुबई", "अमेरिका", "लंदन", "सिंगापुर",
+]

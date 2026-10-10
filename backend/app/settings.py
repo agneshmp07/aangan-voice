@@ -130,6 +130,7 @@ class Settings:
     # Real base per the VaniAgent dashboard + OpenAPI (2026-10-10); auth header is X-API-Key.
     vaani_api_base: str = "https://api.vaanivoice.ai"
     vaani_agent_id: str | None = None
+    studio_phone: str | None = None  # public number shown on the talk page; blank hides it
     # Browser voice widget limits (each session costs call minutes)
     widget_max_session_minutes: int = 5
     widget_max_daily_sessions: int = 30
@@ -191,6 +192,7 @@ def load() -> Settings:
         vaani_webhook_secret=e("VAANI_WEBHOOK_SECRET") or None,
         vaani_api_base=e("VAANI_API_BASE") or "https://api.vaanivoice.ai",
         vaani_agent_id=e("VAANI_AGENT_ID") or None,
+        studio_phone=e("STUDIO_PHONE") or None,
         widget_max_session_minutes=int(_f("WIDGET_MAX_SESSION_MINUTES", 5)),
         widget_max_daily_sessions=int(_f("WIDGET_MAX_DAILY_SESSIONS", 30)),
         widget_sessions_per_visitor_hour=int(_f("WIDGET_SESSIONS_PER_VISITOR_HOUR", 3)),

@@ -21,6 +21,10 @@ LINES: dict[str, dict[str, str]] = {
         "en": "Which area of Pune is the site in?",
         "hi": "आपकी साइट पुणे के किस इलाके में है?",
     },
+    "ask.area_india": {
+        "en": "Which city, and which area of it, is the site in?",
+        "hi": "आपकी साइट किस शहर में और उसके किस इलाके में है?",
+    },
     "ask.area_unknown": {
         "en": "Is that within Pune city or Pimpri-Chinchwad?",
         "hi": "क्या यह पुणे शहर या पिंपरी-चिंचवड के अंदर आता है?",
@@ -51,6 +55,10 @@ LINES: dict[str, dict[str, str]] = {
     "decline.timeline_fixed": {
         "en": "I want to be honest: a redesign with full execution takes at least two to three months, so we couldn't do it well in that time, and I wouldn't want to promise something we can't deliver. If your timeline changes, please do call us again.",
         "hi": "ईमानदारी से कहूँ तो पूरे काम के साथ रीडिज़ाइन में कम से कम दो-तीन महीने लगते हैं, इसलिए इतने समय में हम इसे अच्छे से नहीं कर पाएँगे, और मैं ऐसा वादा नहीं करना चाहती जो हम निभा न सकें। अगर आपकी टाइमलाइन बदले, तो ज़रूर दोबारा कॉल कीजिए।",
+    },
+    "decline.area_india": {
+        "en": "Thank you so much for thinking of us. We take on projects anywhere in India, but not outside it, because our execution depends on our own contractors being on site, so I'm sorry we can't help with this one.",
+        "hi": "हमें याद करने के लिए बहुत धन्यवाद। हम पूरे भारत में प्रोजेक्ट लेते हैं, पर भारत के बाहर नहीं, क्योंकि हमारा काम हमारे अपने कॉन्ट्रैक्टर्स साइट पर करते हैं। माफ़ कीजिए, इस बार हम मदद नहीं कर पाएँगे।",
     },
     "decline.area": {
         "en": "Thank you so much for thinking of us. We only take on projects in Pune city and Pimpri-Chinchwad, because our execution depends on our own contractors being on site, so I'm sorry we can't help with this one.",

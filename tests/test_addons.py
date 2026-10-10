@@ -175,7 +175,7 @@ def test_vaani_webrtc_session_and_limits(api, monkeypatch):
         return httpx.Response(200, json={"token": "lk-tok", "room_name": "web-room-1", "connection_url": "wss://lk.example",
                                          "live_captions_url": "https://cap.example/x"}, request=httpx.Request("POST", url))
     monkeypatch.setattr(vaani_widget.httpx, "post", fake_post)
-    assert api.get("/api/vaani/status").json() == {"enabled": True, "max_minutes": 5, "provider": "vaani"}
+    assert api.get("/api/vaani/status").json() == {"enabled": True, "max_minutes": 5, "provider": "vaani", "phone": None}
     r = api.post("/api/vaani/session", json={"language": "en"})
     assert r.status_code == 200 and r.json()["token"] == "lk-tok" and r.json()["connection_url"] == "wss://lk.example"
     assert seen["url"] == "https://api.vaanivoice.ai/api/trigger-call/" and seen["headers"]["X-API-Key"] == "vaani_test"

@@ -54,7 +54,8 @@ def _daily_ok() -> bool:
 def status():
     """Lets the page decide whether to show the 'talk now' button."""
     return {"enabled": bool(settings.vaani_api_key and settings.vaani_agent_id),
-            "max_minutes": settings.widget_max_session_minutes, "provider": "vaani"}
+            "max_minutes": settings.widget_max_session_minutes, "provider": "vaani",
+            "phone": settings.studio_phone}
 
 
 @router.post("/session")
