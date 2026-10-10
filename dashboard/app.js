@@ -255,6 +255,90 @@
     return card(12, "Latest enquiries", "Most recent first. The full note with everything asked goes to the designer on Telegram.", h("div", { class: "scroll-x" }, t));
   }
 
+
+  // ---------------------------------------------------------------- editorial statement + section labels
+  function statement(m, demo) {
+    const t = m.time_to_claim.call_to_claim, f = m.funnel, med = fmtMin(t.median_min);
+    const parts = [
+      demo ? "In this sample month the desk answered " : "In this period the desk answered ",
+      ["em", fmtN(m.volume.answered) + " calls"], ", ",
+      ["em", fmtN(m.after_hours.calls)], " of them after the front desk had gone home. ",
+      ["em", fmtN(f.qualified) + " were worth a designer's time"], ", and a designer picked them up in a median of ",
+      ["em", `${med.v} ${med.u}`], ". Nobody was quoted a price. Nobody had to repeat themselves."];
+    const p = h("p", { class: "statement-text" });
+    parts.forEach(part => {
+      const [tag, text] = Array.isArray(part) ? part : [null, part];
+      text.split(/(\s+)/).forEach(w => {
+        if (!w.trim()) { p.append(w); return; }
+        p.append(h("span", { class: "w" + (tag ? " hi" : "") , text: w }));
+      });
+    });
+    return h("section", { class: "statement span-12" }, [h("div", { class: "kicker", text: "{ This month at the desk }" }), p]);
+  }
+  const kicker = text => h("div", { class: "kicker span-12", text: `{ ${text} }` });
+
+  // ---------------------------------------------------------------- designers & ROI
+  function pipeline(m) {
+    const p = m.pipeline || {}, c = m.cost;
+    const items = [
+      { label: "Claimed by a designer", value: p.claimed || 0, color: "var(--ramp-3)" },
+      { label: "Consultation booked", value: p.booked || 0, color: "var(--ramp-4)", note: p.self_booked ? `${p.self_booked} self-booked via link` : "" },
+      { label: "Won: project signed", value: p.won || 0, color: "var(--ramp-6)" },
+      { label: "Lost", value: p.lost || 0, color: "var(--text-muted)" }];
+    const lakh = v => (v == null ? "–" : "₹" + (v / 1e5).toLocaleString("en-IN", { maximumFractionDigits: 1 }) + " lakh");
+    const body = h("div", { class: "pipe" }, [
+      h("div", { class: "pipe-big" }, [
+        h("div", { class: "k", text: "System cost per won project" }),
+        h("div", { class: "v", text: c.complete && c.per_won_project ? fmtINR(c.per_won_project) : "–" }),
+        h("div", { class: "d", text: `vs. an average project of ${lakh(p.avg_project_value_inr)} (brief: ₹8–14 lakh). ` +
+          `Win rate ${p.win_rate_pct ?? "–"}% of decided leads · ${fmtN(p.open || 0)} still open.` })]),
+      hbars(items, { max: Math.max(1, p.claimed || 0) })]);
+    return card(8, "Designers & ROI", "Designers tap Booked / Won / Lost in Telegram after the call. Attribution caveat: some of these projects would have come anyway.",
+      body, table(["Stage", "Leads"], items.map(i => [i.label, fmtN(i.value)])));
+  }
+
+  // ---------------------------------------------------------------- motion (GSAP), skipped for reduced motion
+  function animate(root) {
+    const g = window.gsap;
+    if (!g || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    if (window.ScrollTrigger) g.registerPlugin(window.ScrollTrigger);
+    const ST = !!window.ScrollTrigger;
+    // statement: words go from faint to ink as you scroll through it
+    const words = root.querySelectorAll(".statement .w");
+    if (words.length) g.fromTo(words, { opacity: 0.16 }, { opacity: 1, stagger: 0.04, ease: "none",
+      scrollTrigger: ST ? { trigger: ".statement", start: "top 85%", end: "bottom 45%", scrub: true } : undefined });
+    // cards rise in
+    g.utils.toArray(root.querySelectorAll(".card")).forEach(card => g.from(card, { y: 28, opacity: 0, duration: 0.7, ease: "power3.out",
+      scrollTrigger: ST ? { trigger: card, start: "top 92%", once: true } : undefined }));
+    // numbers count up
+    root.querySelectorAll(".stat .v, .tile .v, .hero-num, .pipe-big .v").forEach(el => {
+      const node = [...el.childNodes].find(n => n.nodeType === 3 && /\d/.test(n.textContent));
+      if (!node) return;
+      const m = node.textContent.match(/^(\D*)([\d,]+(?:\.\d+)?)(.*)$/s);
+      if (!m) return;
+      const target = parseFloat(m[2].replace(/,/g, "")), dec = (m[2].split(".")[1] || "").length, obj = { v: 0 };
+      g.to(obj, { v: target, duration: 1.2, ease: "power2.out", onUpdate: () => {
+        node.textContent = m[1] + obj.v.toLocaleString("en-IN", { minimumFractionDigits: dec, maximumFractionDigits: dec }) + m[3]; },
+        scrollTrigger: ST ? { trigger: el, start: "top 95%", once: true } : undefined });
+    });
+    // the dial sweeps in around the clock
+    const hours = root.querySelectorAll(".dial g.hour");
+    if (hours.length) g.from(hours, { scale: 0, svgOrigin: "280 280", duration: 0.8, ease: "back.out(1.4)", stagger: 0.035,
+      scrollTrigger: ST ? { trigger: ".dial", start: "top 80%", once: true } : undefined });
+    // bars grow from the baseline
+    root.querySelectorAll(".hbars").forEach(hb => g.from(hb.querySelectorAll(".fill"), { scaleX: 0, transformOrigin: "left center",
+      duration: 0.9, ease: "power3.out", stagger: 0.07, scrollTrigger: ST ? { trigger: hb, start: "top 88%", once: true } : undefined }));
+    // the daily line draws itself
+    const line = root.querySelector(".line-svg polyline");
+    if (line && line.getTotalLength) {
+      const L = line.getTotalLength();
+      const area = root.querySelector(".line-svg polygon");
+      const tl = g.timeline({ scrollTrigger: ST ? { trigger: line, start: "top 90%", once: true } : undefined });
+      tl.fromTo(line, { strokeDasharray: L, strokeDashoffset: L }, { strokeDashoffset: 0, duration: 1.6, ease: "power2.inOut" });
+      if (area) tl.from(area, { opacity: 0, duration: 0.6 }, "-=0.5");
+    }
+  }
+
   // ---------------------------------------------------------------- page
   async function load() {
     const cfg = window.AANGAN || {};
@@ -272,17 +356,29 @@
       if (cfg.demo) root.append(h("div", { class: "banner", role: "note" }, [h("b", { text: "Synthetic data." }), h("span", { text: " " + meta.note })]));
       const asked = m.price_question;
       root.append(h("div", { class: "grid" }, [
+        statement(m, !!cfg.demo),
+        kicker("Speed: the number that matters"),
         hero(m),
         stat(3, "Calls answered", fmtN(m.volume.answered), `${fmtN(m.volume.missed)} missed or dropped · each called back once`),
         stat(3, "Outside office hours", `${Math.round(m.after_hours.share_pct ?? 0)}%`, `${fmtN(m.after_hours.calls)} calls the desk would have missed`),
         stat(3, "Qualified for a designer", fmtN(m.funnel.qualified), `${pct(m.funnel.qualified, m.funnel.enquiries)}% of real enquiries`),
         stat(3, "Cost per qualified lead", m.cost.complete ? fmtINR(m.cost.per_qualified_lead) : "Unknown", m.cost.complete ? `${fmtINR(m.cost.per_call)} per call, all-in` : "Set the per-minute rate"),
-        dial(m), funnel(m), outcomes(m), reasons(m), daily(m), cost(m),
-        stat(4, "Asked for a price", fmtN(asked.asked), `${asked.share_of_calls_pct ?? 0}% of calls · deflected every time · ${fmtN(asked.claimed)} still reached a designer`),
-        stat(4, "Existing clients escalated", fmtN(m.escalations), "Urgent alert to the studio head + priority callback"),
-        stat(4, "Callbacks", fmtN((m.callbacks.dispatched || 0) + (m.callbacks.pending || 0)),
-          `${fmtN(m.callbacks.dispatched || 0)} done · ${fmtN(m.callbacks.pending || 0)} waiting · ${fmtN(m.callbacks.cancelled || 0)} cancelled (caller rang back)`),
+        kicker("Every hour of the day"),
+        dial(m), funnel(m),
+        kicker("What the rules decided"),
+        outcomes(m), reasons(m),
+        kicker("Designers, money and ROI"),
+        pipeline(m), cost(m),
+        kicker("Volume and safety nets"),
+        daily(m),
+        h("div", { class: "stack span-4" }, [
+          stat(12, "Asked for a price", fmtN(asked.asked), `${asked.share_of_calls_pct ?? 0}% of calls · deflected every time · ${fmtN(asked.claimed)} still reached a designer`),
+          stat(12, "Existing clients escalated", fmtN(m.escalations), "Urgent alert to the studio head + priority callback"),
+          stat(12, "Callbacks", fmtN((m.callbacks.dispatched || 0) + (m.callbacks.pending || 0)),
+            `${fmtN(m.callbacks.dispatched || 0)} done · ${fmtN(m.callbacks.pending || 0)} waiting · ${fmtN(m.callbacks.cancelled || 0)} cancelled (caller rang back)`)]),
+        kicker("Latest enquiries"),
         recent(leads)]));
+      animate(root);
       root.append(h("p", { class: "foot", html: `Period ${m.period.start.slice(0, 10)} → ${m.period.end.slice(0, 10)} · IST. Office hours ${m.after_hours.office_hours}. ` +
         `Decisions come from the rules engine (<code>backend/app/rules</code>); the AI only collects facts. ` +
         (cfg.demo ? "Generated by <code>scripts/seed_demo.py</code> through the production code paths." : "Live data from <code>/api/metrics</code>.") }));

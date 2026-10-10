@@ -152,7 +152,24 @@ def main():
             when = claim_delay(clock.parse(lead["handoff_sent_at"]))
             if when:
                 clock.freeze(when)
-                leads.claim(lead["id"], R.choice(["Asha", "Rohan", "Isha", "Kabir", "Neel", "Tara", "Om"]))
+                who = R.choice(["Asha", "Rohan", "Isha", "Kabir", "Neel", "Tara", "Om"])
+                leads.claim(lead["id"], who, tg_id=who)
+                # What designers report back (assumed rates, labelled on the page): ~60% book a consultation
+                # (a quarter of those via the self-booking link), ~30% of consultations become projects.
+                r = R.random()
+                if r < 0.6:
+                    clock.freeze(when + timedelta(hours=R.uniform(1, 30)))
+                    if R.random() < 0.25:
+                        db.update("leads", lead["id"], {"self_booked": 1})
+                    leads.set_stage(lead["id"], "booked", who, who)
+                    if R.random() < 0.3:
+                        clock.freeze(when + timedelta(days=R.uniform(4, 12)))
+                        leads.set_stage(lead["id"], "won", who, who)
+                    elif R.random() < 0.25:
+                        leads.set_stage(lead["id"], "lost", who, who)
+                elif r < 0.75:
+                    clock.freeze(when + timedelta(hours=R.uniform(2, 48)))
+                    leads.set_stage(lead["id"], "lost", who, who)
     # Front desk works through callbacks hourly, 9am–9pm (quiet hours enforced by the code).
     for day in range(1, 31):
         for hour in range(9, 21):
@@ -164,7 +181,7 @@ def main():
     recent = metrics_router.list_leads(limit=12)
     out = {"synthetic": True, "generated_by": "scripts/seed_demo.py", "metrics": m, "recent_leads": recent,
            "assumptions": {"calls": n_calls, "rate_per_min_inr": 4.5, "monthly_fixed_inr": 4999,
-                           "note": "September 2026, generated. Volumes from the brief (~200 calls, ~1/3 after hours); "
+                           "note": "September 2026, generated. Designer outcomes (won/lost) are assumed rates, not data. Volumes from the brief (~200 calls, ~1/3 after hours); "
                                    "outcome mix modelled on the September transcripts; ₹4.5/min and ₹4,999/month from "
                                    "VaniAgent's public pricing (2026-10-10); hosting on free tiers."}}
     dest = ROOT / "dashboard" / "demo-data.json"
