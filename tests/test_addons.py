@@ -225,3 +225,22 @@ def test_vaani_requires_key_when_secret_set(api, monkeypatch):
     settings_mod.reload()
     assert api.post("/webhooks/vaani", json={"event": "call_started", "room_name": "r"}).status_code == 401
     assert api.post("/webhooks/vaani?key=s3cret", json={"event": "call_started", "room_name": "r"}).status_code == 200
+
+
+def test_real_vaani_call_links_phoneless_tool_lead_and_skips_false_callback(api):
+    """Replays the 2026-10-10 test call: tools carry only session_ref (no call id, no phone);
+    the webhook brings the phone; call_duration is in seconds; entities is null."""
+    vaani(api, {"event": "call_started", "room_name": "outbound-1", "phone_number": "+919480428173"})
+    flat = {"language": "en", "session_ref": "A82K", **{k: ("yes" if v is True else "no" if v is False else v)
+                                                        for k, v in QUALIFIED_FACTS.items() if v is not None}}
+    assert api.post("/tools/evaluate_enquiry", json=flat).json()["outcome"] == "QUALIFIED"
+    s = api.post("/tools/get_consultation_slots", json={"language": "en", "session_ref": "A82K", "slot_id": ""}).json()
+    b = api.post("/tools/get_consultation_slots", json={"language": "en", "session_ref": "A82K",
+                                                        "slot_id": s["slots"][0]["slot_id"]}).json()
+    assert b["ok"] and b.get("booking_id")
+    vaani(api, {"event": "call_postprocessing", "call_id": "outbound-1", "data": {
+        "room_name": "outbound-1", "call_duration": 126.17, "summary": "Booked.", "entities": None}})
+    lead = db.row("SELECT * FROM leads WHERE call_id='vref-A82K'")
+    assert lead["phone"] == "+919480428173"
+    assert db.row("SELECT COUNT(*) n FROM callbacks")["n"] == 0
+    assert db.row("SELECT duration_s FROM calls WHERE id='outbound-1'")["duration_s"] == 126.2

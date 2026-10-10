@@ -153,6 +153,30 @@ VAANI_LOGGED = {"call_ringing", "user_picked_up_at", "human_transfer_initiated",
                 "human_transfer_failed", "call_rejected", "call_no_answer", "call_failed"}
 
 
+def _link_tool_lead(room: str, phone: str | None, started_at: str | None) -> dict | None:
+    """Vaani sends no call id with tool requests (checked on a real call, 2026-10-10), so tool leads are
+    keyed by the agent's session_ref ("vref-...") and have no phone. When the call's webhook arrives,
+    adopt the phone-less tool lead created during this call and give it the caller's number."""
+    if not phone:
+        return None
+    since = started_at or clock.iso(clock.now() - timedelta(minutes=30))
+    lead = db.row("SELECT * FROM leads WHERE phone IS NULL AND (call_id LIKE 'vref-%' OR call_id LIKE 'anon-unknown-%') "
+                  "AND created_at>=? ORDER BY created_at ASC LIMIT 1", since)
+    if not lead:
+        return None
+    db.update("leads", lead["id"], {"phone": phone, "updated_at": clock.iso(clock.now())})
+    if db.row("SELECT id FROM calls WHERE id=?", lead["call_id"]):
+        db.update("calls", lead["call_id"], {"phone": phone})
+    db.insert("events", {"ts": clock.iso(clock.now()), "type": "lead_linked", "call_id": room, "data": lead["call_id"]})
+    return db.row("SELECT * FROM leads WHERE id=?", lead["id"])
+
+
+def _seconds(v) -> float:
+    """Docs say ms; real payloads (2026-10-10) send seconds (126.17). No call lasts 20,000 s."""
+    v = float(v)
+    return round(v / 1000, 1) if v > 20000 else round(v, 1)
+
+
 def process_vaani(body: dict) -> dict:
     event = str(body.get("event") or "").lower()
     data = body.get("data") if isinstance(body.get("data"), dict) else {}
@@ -178,7 +202,7 @@ def process_vaani(body: dict) -> dict:
         dur = body.get("call_duration") or data.get("call_duration")
         upd = {"ended_at": now, "ended_reason": body.get("end_reason") or data.get("end_reason")}
         if dur is not None:
-            upd["duration_s"] = float(dur)
+            upd["duration_s"] = _seconds(dur)
         if existing:
             db.update("calls", room, {k: v for k, v in upd.items() if v is not None})
         else:
@@ -190,10 +214,12 @@ def process_vaani(body: dict) -> dict:
         upd = {"summary": data.get("summary"), "transcript": data.get("transcript"), "recording_url": data.get("recording_url"),
                "raw": json.dumps(body, ensure_ascii=False)[:20000]}
         if dur_ms is not None:
-            upd["duration_s"] = round(float(dur_ms) / 1000, 1)
+            upd["duration_s"] = _seconds(dur_ms)
         if not existing:
             db.insert("calls", {"id": room, "phone": phone, "started_at": now, "created_at": now})
         db.update("calls", room, {k: v for k, v in upd.items() if v is not None})
+        if not _find_lead(room, phone):
+            _link_tool_lead(room, phone, (existing or {}).get("started_at"))
         entities = data.get("entities") if isinstance(data.get("entities"), dict) else {}
         if not entities:
             # Nothing extracted (hung up early / silent): treat as dropped, one callback, never 9pm-9am.
